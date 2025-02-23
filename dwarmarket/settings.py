@@ -77,21 +77,22 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# 🔹 التأكد من وجود مجلد staticfiles عند التشغيل
+if not os.path.exists(STATIC_ROOT):
+    os.makedirs(STATIC_ROOT)
+
 # ✅ ضبط WhiteNoise لتقديم الملفات الثابتة
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ✅ تحسين الأمان للملفات الثابتة والكوكيز
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_SSL_REDIRECT = True  # يجبر جميع الطلبات على استخدام HTTPS
+SECURE_SSL_REDIRECT = not DEBUG  # يجبر جميع الطلبات على استخدام HTTPS فقط في الإنتاج
 
 # ✅ إعدادات CORS لدعم الاتصال من تطبيق Flutter بشكل آمن
-CORS_ALLOWED_ORIGINS = [
-    "https://web-production-7ceef.up.railway.app",
-    "https://your-flutter-app.com",  # استبدل بهذا رابط التطبيق الفعلي إذا كنت تستخدم واحدًا
-]
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "https://web-production-7ceef.up.railway.app").split(",")
 
 # ✅ إعدادات REST Framework و JWT
 REST_FRAMEWORK = {
@@ -119,3 +120,23 @@ SIMPLE_JWT = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'store.User'
+
+# ✅ ضبط الـ Logging لرؤية الأخطاء بشكل أوضح على Railway
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'django_error.log'),
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
