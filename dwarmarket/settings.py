@@ -9,10 +9,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
 DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
 
-# ✅ ضبط ALLOWED_HOSTS لقراءة القيم من البيئة
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'web-production-7ceef.up.railway.app').split(',')
+# ✅ ضبط ALLOWED_HOSTS
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'web-production-7ceef.up.railway.app,127.0.0.1').split(',')
 
-# ✅ إصلاح مشكلة CSRF (403 Forbidden)
+# ✅ إصلاح CSRF
 CSRF_TRUSTED_ORIGINS = [
     "https://web-production-7ceef.up.railway.app",
 ]
@@ -28,14 +28,17 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework',
     'djoser',
-    'debug_toolbar',
     'store',
     'corsheaders',
 ]
 
+# ✅ تفعيل debug_toolbar فقط في التطوير
+if DEBUG:
+    INSTALLED_APPS.append('debug_toolbar')
+
 # ✅ الميدل وير
 MIDDLEWARE = [
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # يجب أن يكون أول middleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -44,6 +47,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# ✅ إضافة debug_toolbar في `MIDDLEWARE` فقط عند `DEBUG=True`
+if DEBUG:
+    MIDDLEWARE.insert(3, 'debug_toolbar.middleware.DebugToolbarMiddleware')
 
 ROOT_URLCONF = 'dwarmarket.urls'
 
@@ -67,7 +74,7 @@ WSGI_APPLICATION = 'dwarmarket.wsgi.application'
 
 # ✅ قاعدة البيانات PostgreSQL
 DATABASES = {
-    'default': dj_database_url.parse(os.getenv('DATABASE_URL'))
+    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
 }
 
 # ✅ إعدادات الملفات الثابتة والوسائط
@@ -77,21 +84,25 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# 🔹 التأكد من وجود مجلد staticfiles عند التشغيل
+# 🔹 إنشاء مجلد staticfiles إذا لم يكن موجودًا
 if not os.path.exists(STATIC_ROOT):
     os.makedirs(STATIC_ROOT)
 
-# ✅ ضبط WhiteNoise لتقديم الملفات الثابتة
+# ✅ ضبط WhiteNoise بشكل صحيح
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ✅ تحسين الأمان للملفات الثابتة والكوكيز
+# ✅ تحسين الأمان ومنع إعادة التوجيه الغير منتهية
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = False  # تعطيل إعادة التوجيه التلقائي إلى HTTPS مؤقتًا
+
+# ✅ تحسين إعدادات الأمان
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_SSL_REDIRECT = not DEBUG  # يجبر جميع الطلبات على استخدام HTTPS فقط في الإنتاج
+SECURE_REFERRER_POLICY = "strict-origin"
 
-# ✅ إعدادات CORS لدعم الاتصال من تطبيق Flutter بشكل آمن
+# ✅ دعم CORS للسماح بالاتصال من تطبيقات أخرى
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "https://web-production-7ceef.up.railway.app").split(",")
 
 # ✅ إعدادات REST Framework و JWT
@@ -121,15 +132,22 @@ SIMPLE_JWT = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'store.User'
 
-# ✅ ضبط الـ Logging لرؤية الأخطاء بشكل أوضح على Railway
+# ✅ ضبط الـ Logging لرؤية الأخطاء على Railway
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'django_error.log'),
+            'formatter': 'verbose',
         },
     },
     'loggers': {
@@ -140,3 +158,7 @@ LOGGING = {
         },
     },
 }
+
+# ✅ تفعيل Debug Toolbar فقط في التطوير
+if DEBUG:
+    INTERNAL_IPS = ["127.0.0.1"]
