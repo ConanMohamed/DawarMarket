@@ -7,7 +7,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 🔒 استخدام متغيرات البيئة للأمان
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
-DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ['true', '1']
+
 
 # ✅ ضبط ALLOWED_HOSTS
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'web-production-7ceef.up.railway.app,127.0.0.1').split(',')
