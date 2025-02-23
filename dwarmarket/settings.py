@@ -8,7 +8,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 🔒 استخدام متغيرات البيئة للأمان
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
 DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+
+# ✅ ضبط ALLOWED_HOSTS لقراءة القيم من البيئة
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'web-production-7ceef.up.railway.app').split(',')
+
+# ✅ إصلاح مشكلة CSRF (403 Forbidden)
+CSRF_TRUSTED_ORIGINS = [
+    "https://web-production-7ceef.up.railway.app",
+]
 
 # ✅ التطبيقات المثبتة
 INSTALLED_APPS = [
@@ -28,8 +35,7 @@ INSTALLED_APPS = [
 
 # ✅ الميدل وير
 MIDDLEWARE = [
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # يجب أن يكون أول middleware
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -71,13 +77,21 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# ✅ ضبط WhiteNoise لتقديم الملفات الثابتة
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# ✅ تحسين الأمان للملفات الثابتة والكوكيز
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_SSL_REDIRECT = True  # يجبر جميع الطلبات على استخدام HTTPS
 
-STATICFILES_STORAGE = 'whitenoise.storage.StaticFilesStorage'
-
-
-# ✅ إعدادات CORS لدعم الاتصال من تطبيق Flutter
-CORS_ALLOW_ALL_ORIGINS = True
+# ✅ إعدادات CORS لدعم الاتصال من تطبيق Flutter بشكل آمن
+CORS_ALLOWED_ORIGINS = [
+    "https://web-production-7ceef.up.railway.app",
+    "https://your-flutter-app.com",  # استبدل بهذا رابط التطبيق الفعلي إذا كنت تستخدم واحدًا
+]
 
 # ✅ إعدادات REST Framework و JWT
 REST_FRAMEWORK = {
