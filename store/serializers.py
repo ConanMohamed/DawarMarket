@@ -45,7 +45,7 @@ class StoreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Store
-        fields = ['id', 'name', 'category', 'products_count', 'image']
+        fields = ['id', 'name','description','opens_at' ,'close_at','max_discount','category', 'products_count', 'image']
 
     products_count = serializers.SerializerMethodField()
 
@@ -56,12 +56,12 @@ class StoreSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    store = serializers.CharField()
+    
     store_category = StoreCategorySerializer()
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'unit_price', 'store', 'store_category', 'image']
+        fields = ['id', 'title', 'description', 'unit_price','price_after_discount', 'store', 'store_category', 'image']
 
     
 
@@ -70,7 +70,7 @@ class SimpleProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'unit_price', 'image']
+        fields = ['id', 'title', 'unit_price','price_after_discount', 'image']
 
     
 
@@ -79,11 +79,12 @@ class CartItemSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
 
     def get_total_price(self, cart_item: CartItem):
-        return cart_item.quantity * cart_item.product.unit_price
+        return cart_item.quantity * cart_item.product.price_after_discount  # استخدام price_after_discount
 
     class Meta:
         model = CartItem
         fields = ['id', 'product', 'quantity', 'total_price']
+
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -92,17 +93,18 @@ class CartSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
 
     def get_total_price(self, cart):
-        return sum(item.quantity * item.product.unit_price for item in cart.items.all())
+        return sum(item.quantity * item.product.price_after_discount for item in cart.items.all())  # استخدام price_after_discount
 
     class Meta:
         model = Cart
         fields = ['id', 'items', 'total_price']
 
 
+
 class AddCartItemSerializer(serializers.ModelSerializer):
-    product = serializers.SlugRelatedField(
-        queryset=Product.objects.all(),
-        slug_field='title'
+    id = serializers.IntegerField(read_only=True)  # عرض ID بعد الإضافة
+    product = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all()
     )
 
     def save(self, **kwargs):
@@ -118,11 +120,13 @@ class AddCartItemSerializer(serializers.ModelSerializer):
             cart_item.quantity += quantity
             cart_item.save()
 
+        self.instance = cart_item  # مهم جدًا حتى يرجع الـ id في الاستجابة
         return cart_item
 
     class Meta:
         model = CartItem
         fields = ['id', 'product', 'quantity']
+
 
 
 class UpdateCartItemSerializer(serializers.ModelSerializer):
@@ -131,29 +135,50 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
         fields = ['quantity']
 
 
+
+
 class OrderItemSerializer(serializers.ModelSerializer):
     product = SimpleProductSerializer()
     total_item_price = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'quantity', 'unit_price', 'total_item_price']
+        fields = ['id', 'product', 'quantity', 'total_item_price']
 
     def get_total_item_price(self, obj):
-        return float(Decimal(obj.quantity) * Decimal(obj.unit_price))
+        """ حساب السعر الإجمالي بناءً على السعر بعد الخصم """
+        return float(obj.quantity * obj.product.price_after_discount)
 
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     customer = serializers.CharField()
     total_price = serializers.SerializerMethodField()
+    store_name = serializers.SerializerMethodField()
+    store_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price']
+        fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price', 'store_name', 'store_image']
 
     def get_total_price(self, obj):
-        return sum(item.quantity * item.unit_price for item in obj.items.all())
+        """ حساب المجموع الإجمالي للطلب بناءً على السعر بعد الخصم """
+        return sum(item.quantity * item.product.price_after_discount for item in obj.items.all())
+
+    def get_store_name(self, obj):
+        """ جلب اسم المتجر من أول منتج في الطلب """
+        first_item = obj.items.first()
+        return first_item.product.store.name if first_item else None
+
+    def get_store_image(self, obj):
+        """ جلب صورة المتجر إذا كانت موجودة """
+        request = self.context.get('request')
+        first_item = obj.items.first()
+        if first_item and first_item.product.store.image:
+            return request.build_absolute_uri(first_item.product.store.image.url)
+        return None
+
+
 
 
 class CreateOrderSerializer(serializers.Serializer):
