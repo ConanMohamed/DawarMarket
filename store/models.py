@@ -43,9 +43,10 @@ class Store(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     description = models.TextField(null=True, blank=True)
-    opens_at = models.DateTimeField(null=True, blank=True)
-    close_at = models.DateTimeField(null=True, blank=True)
+    opens_at = models.TimeField(null=True, blank=True)
+    close_at = models.TimeField(null=True, blank=True)
     image = models.ImageField(upload_to='stores/', null=True, blank=True)  # إضافة حقل الصورة
+    max_discount = models.DecimalField(max_digits=3,decimal_places=1,blank=True, null=True)
 
     def __str__(self):
         return f"{self.name} ({self.category.name})"
@@ -70,7 +71,7 @@ class Product(models.Model):
     slug = models.SlugField(unique=True, blank=True)
     description = models.TextField(null=True, blank=True)
     unit_price = models.DecimalField(max_digits=6, decimal_places=2, validators=[MinValueValidator(1)])
-    inventory = models.IntegerField(validators=[MinValueValidator(0)])
+    price_after_discount = models.DecimalField(max_digits=6, decimal_places=2)
     last_update = models.DateTimeField(auto_now=True)
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="products")
     store_category = models.ForeignKey(StoreCategory, on_delete=models.CASCADE, related_name="products", null=True, blank=True)
@@ -112,53 +113,66 @@ class CartItem(models.Model):
 
 
 # Order Model (الطلب مرتبط بالمحل)
+from django.db import models
+from django.conf import settings
+from decimal import Decimal
+
 class Order(models.Model):
-    ORDER_STATUS_PENDING = 'P'
-    ORDER_STATUS_SHIPPED = 'S'
-    ORDER_STATUS_DELIVERED = 'D'
-    ORDER_STATUS_ACCEPTED = 'A'
+    ORDER_STATUS_PENDING = 'pending'
+    ORDER_STATUS_SHIPPED = 'Shipped'
+    ORDER_STATUS_DELIVERED = 'delivered'
+    ORDER_STATUS_ACCEPTED = 'accepted'
+    ORDER_STATUS_CANCELED = 'canceled'
+
     ORDER_STATUS_CHOICES = [
         (ORDER_STATUS_PENDING, 'Pending'),
         (ORDER_STATUS_SHIPPED, 'Shipped'),
         (ORDER_STATUS_DELIVERED, 'Delivered'),
         (ORDER_STATUS_ACCEPTED, 'Accepted'),
+        (ORDER_STATUS_CANCELED, 'Canceled')
     ]
 
     placed_at = models.DateTimeField(auto_now_add=True)
-    order_status = models.CharField(max_length=1, choices=ORDER_STATUS_CHOICES, default=ORDER_STATUS_PENDING)
+    order_status = models.CharField(max_length=12, choices=ORDER_STATUS_CHOICES, default=ORDER_STATUS_PENDING)
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def calculate_total_price(self, save=True):
-        total = sum(item.quantity * item.unit_price for item in self.items.all())
-        if self.total_price != total:  # تجنب الحفظ غير الضروري
+        """حساب `total_price` بناءً على `price_after_discount` بدلاً من `unit_price`"""
+        total = sum(item.quantity * item.product.price_after_discount for item in self.items.all())  # ✅ استخدام price_after_discount
+
+        if self.total_price != total:  # ✅ تجنب الحفظ إذا لم تتغير القيمة
             self.total_price = total
             if save:
-                self.save(update_fields=['total_price'])
+                super().save(update_fields=['total_price'])  # ✅ تحديث `total_price` فقط بدون استدعاء `save()` كامل
+
+
 
     def __str__(self):
         return f"Order {self.id} - {self.customer.full_name}"
+
 
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='orderitems')
     quantity = models.PositiveSmallIntegerField()
-    unit_price = models.DecimalField(max_digits=6, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=6, decimal_places=2, editable=False)  # لا يمكن تعديله يدويًا
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        if not self.unit_price:  # إذا لم يتم تحديد السعر، اجلبه من المنتج
-            self.unit_price = self.product.unit_price  
+        if not self.unit_price:  # تأكد من استخدام السعر بعد الخصم
+            self.unit_price = self.product.price_after_discount  
+        
+        super().save(*args, **kwargs)
 
-        super().save(*args, **kwargs)  
-
-        # تحديث السعر بعد حفظ العنصر
+        # تحديث السعر بعد الحفظ
         if self.order:
             self.order.calculate_total_price()
+
 
     def delete(self, *args, **kwargs):
         order = self.order  # احفظ الطلب قبل الحذف
@@ -170,3 +184,4 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"OrderItem {self.product.title} ({self.quantity})"
+
