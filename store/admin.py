@@ -6,23 +6,13 @@ from django.urls import reverse
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from decimal import Decimal
 from . import models
+from django.urls import path
+from django.http import JsonResponse
 
 # Register CartItem model
 admin.site.register(models.CartItem)
 
-# Inventory Filter
-class InventoryFilter(admin.SimpleListFilter):
-    title = 'inventory'
-    parameter_name = 'inventory'
 
-    def lookups(self, request, model_admin):
-        return [
-            ('<10', 'Low')
-        ]
-
-    def queryset(self, request, queryset: QuerySet):
-        if self.value() == '<10':
-            return queryset.filter(inventory__lt=10)
 
 
 
@@ -118,9 +108,9 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(models.Product)
 class ProductAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ['title']}
-    actions = ['clear_inventory']
-    list_display = ['title', 'unit_price', 'inventory_status', 'store', 'image_preview']
-    list_editable = ['unit_price']
+    
+    list_display = ['title', 'unit_price','price_after_discount', 'store', 'image_preview']
+    list_editable = ['price_after_discount']
     list_filter = ['store', 'last_update']
     list_per_page = 10
     list_select_related = ['store']
@@ -132,20 +122,9 @@ class ProductAdmin(admin.ModelAdmin):
         return "No Image"
     image_preview.short_description = "Image"
 
-    def inventory_status(self, product):
-        return 'Low' if product.inventory < 10 else 'OK'
+   
 
-    @admin.action(description='Clear inventory')
-    def clear_inventory(self, request, queryset):
-        updated_count = queryset.update(inventory=0)
-        if updated_count > 0:
-            self.message_user(
-                request,
-                f'{updated_count} products were successfully updated.',
-                messages.SUCCESS
-            )
-        else:
-            self.message_user(request, 'No products updated.', messages.WARNING)
+    
 
 
 # User Admin
@@ -170,11 +149,54 @@ class UserAdmin(BaseUserAdmin):
     )
 
 # Order Item Inline
+from django.contrib import admin
+from django.utils.html import format_html
+from django.urls import path
+from django.http import JsonResponse
+from decimal import Decimal
+from django.forms import BaseInlineFormSet
+from . import models
+
+# ✅ قاعدة بيانات `OrderItemInline` لضمان عدم تكرار المنتج
+class OrderItemInlineFormset(BaseInlineFormSet):
+    def clean(self):
+        """التأكد من عدم إضافة نفس المنتج مرتين وزيادة الكمية بدلاً من ذلك"""
+        super().clean()
+        seen_products = {}
+
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                product = form.cleaned_data['product']
+                quantity = form.cleaned_data['quantity']
+
+                if product in seen_products:
+                    # ✅ إذا كان المنتج مكررًا، يتم زيادة الكمية بدلاً من إضافة صف جديد
+                    seen_products[product].quantity += quantity
+                    seen_products[product].save()
+                    form.cleaned_data['DELETE'] = True  # منع إضافة صف جديد
+                else:
+                    seen_products[product] = form.instance
+
+
 class OrderItemInline(admin.TabularInline):
     model = models.OrderItem
     extra = 1
-    fields = ['product', 'quantity', 'unit_price']
-    readonly_fields = ['unit_price']
+    formset = OrderItemInlineFormset  # ✅ استبدال الـ formset لحل مشكلة التكرار
+    fields = ['product', 'quantity', 'price_after_discount_display', 'total_item_price_display']
+    readonly_fields = ['price_after_discount_display', 'total_item_price_display']
+
+    def price_after_discount_display(self, obj):
+        """عرض السعر بعد الخصم في الأدمن بانل"""
+        return f"{obj.product.price_after_discount:.2f} EGP" if obj.product else "-"
+    price_after_discount_display.short_description = "Price After Discount"
+
+    def total_item_price_display(self, obj):
+        """حساب `total_item_price` باستخدام `price_after_discount`"""
+        if obj.product:
+            return f"{obj.quantity * obj.product.price_after_discount:.2f} EGP"
+        return "-"
+    total_item_price_display.short_description = "Total Item Price (After Discount)"
+
 
 # Order Admin
 @admin.register(models.Order)
@@ -188,6 +210,56 @@ class OrderAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         obj.calculate_total_price()
+    
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        for order in queryset:
+            order.calculate_total_price(save=True)  # تحديث السعر قبل عرضه
+        return queryset
+    
+    def save_related(self, request, form, formsets, change):
+        """تحديث `total_price` عند تعديل `OrderItem` داخل الطلب"""
+        super().save_related(request, form, formsets, change)
+        form.instance.calculate_total_price(save=True)  # ✅ تحديث `total_price` بعد تعديل `OrderItem`
+
+    @admin.display(ordering='total_price', description="Total Price (After Discount)")
+    def total_price_display(self, obj):
+        """إظهار `total_price` بعد التأكد من جلب القيمة الصحيحة"""
+        obj.refresh_from_db()
+        total_price = Decimal(obj.total_price) if obj.total_price else Decimal('0.00')
+        return format_html("<strong>{:.2f} EGP</strong>", total_price)
+
+
+
+    # ✅ إضافة API داخل الأدمن بانل لجلب عدد الطلبات الجديدة
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('check-new-orders/', self.admin_site.admin_view(self.check_new_orders), name="check-new-orders"),
+        ]
+        return custom_urls + urls
+
+    # ✅ API لحساب عدد الطلبات الجديدة
+    def check_new_orders(self, request):
+        new_orders_count = models.Order.objects.filter(order_status="Pending").count()
+        return JsonResponse({"new_orders": new_orders_count})
+    # ✅ تحميل JavaScript داخل صفحة الأدمن 
+    
+    def update_order_total(self, request):
+        """إرجاع السعر المحدث لكل الطلبات لتحديثه في الأدمن بانل بدون تحديث الصفحة"""
+        orders = models.Order.objects.all()
+        data = {order.id: float(order.total_price) for order in orders}
+        return JsonResponse(data)
+    
+    
+    
+    class Media:
+        js = ('js/auto-refresh.js',)
+    
+
+    
+    
+
 
     @admin.display(ordering='customer')
     def customer_info(self, order):
