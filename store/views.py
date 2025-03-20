@@ -67,6 +67,7 @@ class StoreCategoryViewSet(ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['store_id']
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
 
