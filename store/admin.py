@@ -254,7 +254,9 @@ class OrderAdmin(admin.ModelAdmin):
     
     
     class Media:
-        js = ('js/auto-refresh.js',)
+       
+       js = ('rest_framework/js/auto-refresh.js',)
+
     
 
     
