@@ -171,6 +171,19 @@ LOGGING = {
     },
 }
 
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+INSTALLED_APPS += ['cloudinary', 'cloudinary_storage']
+
+
+
 # ✅ تفعيل Debug Toolbar فقط في التطوير
 if DEBUG:
     INTERNAL_IPS = ["127.0.0.1"]
