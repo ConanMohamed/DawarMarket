@@ -2,6 +2,9 @@ from pathlib import Path
 from datetime import timedelta
 import os
 import dj_database_url
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,6 +33,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'djoser',
     'store',
+    'cloudinary', 
+    'cloudinary_storage',
     'corsheaders',
 ]
 
@@ -177,10 +182,9 @@ CLOUDINARY_STORAGE = {
     'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
     'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
 }
-
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-INSTALLED_APPS += ['cloudinary', 'cloudinary_storage']
+
 
 
 
