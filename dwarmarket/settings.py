@@ -99,6 +99,14 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = False  # تعطيل إعادة التوجيه التلقائي إلى HTTPS مؤقتًا
 
+
+LANGUAGE_CODE = 'en-us'
+
+
+TIME_ZONE = 'Africa/Cairo'
+USE_TZ = True
+
+USE_I18N = True
 # ✅ تحسين إعدادات الأمان
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
