@@ -152,6 +152,10 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.id} - {self.customer.full_name}"
+        
+    class Meta:
+      ordering = ['-placed_at']
+
 
 
 
