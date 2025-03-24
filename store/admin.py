@@ -8,6 +8,8 @@ from decimal import Decimal
 from . import models
 from django.urls import path
 from django.http import JsonResponse
+from django.utils.timezone import localtime
+from django.utils.formats import date_format
 
 # Register CartItem model
 admin.site.register(models.CartItem)
@@ -201,11 +203,19 @@ class OrderItemInline(admin.TabularInline):
 # Order Admin
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
+
+
+    @admin.display(description="وقت الطلب")
+    def formatted_placed_at(self, obj):
+        local_time = localtime(obj.placed_at)
+        return date_format(local_time, format='DATETIME_FORMAT', use_l10n=True)
+     
     autocomplete_fields = ['customer']
     inlines = [OrderItemInline]
-    list_display = ['id', 'placed_at', 'customer_info', 'total_price_display']
+    list_display = ['id', 'formatted_placed_at', 'customer_info', 'total_price_display']
     list_select_related = ['customer']
     search_fields = ['id', 'customer__phone', 'customer__full_name']
+    ordering = ['-placed_at']
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
