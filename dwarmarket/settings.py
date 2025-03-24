@@ -11,7 +11,7 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ['true', '1']
 
 
 # ✅ ضبط ALLOWED_HOSTS
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'web-production-7ceef.up.railway.app,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'web-production-7ceef.up.railway.app,127.0.0.1,dawarmarket.com,www.dawarmarket.com').split(',')
 
 # ✅ إصلاح CSRF
 CSRF_TRUSTED_ORIGINS = [
