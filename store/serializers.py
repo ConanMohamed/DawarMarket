@@ -178,11 +178,8 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price', 'store_name', 'store_image']
 
     def get_total_price(self, obj):
-        try:
-            return sum(item.quantity * item.product.price_after_discount for item in obj.items.all())
-        except:
-            return 0.0
-
+        """ حساب المجموع الإجمالي للطلب بناءً على السعر بعد الخصم """
+        return sum(item.quantity * item.product.price_after_discount for item in obj.items.all())
 
     def get_store_name(self, obj):
         """ جلب اسم المتجر من أول منتج في الطلب """
@@ -195,9 +192,7 @@ class OrderSerializer(serializers.ModelSerializer):
         first_item = obj.items.first()
         if first_item and first_item.product.store.image:
             return request.build_absolute_uri(first_item.product.store.image.url)
-        
         return None
-    
     
     def get_placed_at(self, obj):
         local_time = localtime(obj.placed_at)

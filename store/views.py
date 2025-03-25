@@ -17,8 +17,6 @@ from .serializers import (
     UpdateCartItemSerializer, UpdateOrderSerializer, CategorySerializer, StoreCategorySerializer
 )
 from .permissions import IsAdminOrReadOnly, IsOrderOwnerOrAdmin
-from django.db.models import Prefetch
-
 
 
 class ProductViewSet(ModelViewSet):
@@ -134,17 +132,9 @@ class OrderViewSet(ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        # ✅ تحسين الأداء بتحميل المنتجات والمتاجر مسبقًا
-        item_queryset = OrderItem.objects.select_related('product__store')
-
         if user.is_staff:
-            return Order.objects.all() \
-                .select_related('customer') \
-                .prefetch_related(Prefetch('items', queryset=item_queryset))
-
-        return Order.objects.filter(customer=user) \
-            .select_related('customer') \
-            .prefetch_related(Prefetch('items', queryset=item_queryset))
+            return Order.objects.all().select_related('customer').prefetch_related('items', 'items__product')
+        return Order.objects.filter(customer=user).select_related('customer').prefetch_related('items', 'items__product')
 
     def destroy(self, request, *args, **kwargs):
         order = get_object_or_404(Order, id=kwargs['pk'], customer=request.user)
