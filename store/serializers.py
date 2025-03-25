@@ -221,9 +221,13 @@ class CreateOrderSerializer(serializers.Serializer):
                 for item in cart_items
             ]
             OrderItem.objects.bulk_create(order_items)
-            Cart.objects.filter(pk=cart_id).delete()
 
+            # ✅ السطر المهم لحل المشكلة
+            order.calculate_total_price(save=True)
+
+            Cart.objects.filter(pk=cart_id).delete()
             return order
+
 
 
 class UpdateOrderSerializer(serializers.ModelSerializer):
