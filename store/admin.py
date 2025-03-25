@@ -146,6 +146,157 @@ class OrderItemInlineFormset(BaseInlineFormSet):
                 else:
                     seen_products[product] = form.instance
 
+from django.contrib import admin, messages
+from django.db.models.aggregates import Count
+from django.db.models.query import QuerySet
+from django.utils.html import format_html, urlencode
+from django.urls import reverse
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from decimal import Decimal
+from . import models
+from django.urls import path
+from django.http import JsonResponse
+from django.utils.timezone import localtime
+from django.utils.formats import date_format
+from django.forms import BaseInlineFormSet
+
+# Register CartItem model
+admin.site.register(models.CartItem)
+
+# ✅ StoreCategory Admin - عرض الصورة
+@admin.register(models.StoreCategory)
+class StoreCategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'store', 'image_preview', 'products_count']
+    list_select_related = ['store']
+    search_fields = ['name', 'store__name']
+    list_per_page = 20
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />', obj.image.url)
+        return "No Image"
+    image_preview.short_description = "Image"
+
+    @admin.display(ordering='products_count')
+    def products_count(self, store_category):
+        url = (
+            reverse('admin:store_product_changelist')
+            + '?' + urlencode({'store_category__id': str(store_category.id)})
+        )
+        return format_html('<a href="{}">{} Products</a>', url, store_category.products_count or 0)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            products_count=Count('products', distinct=True)
+        )
+
+# ✅ Store Admin - عرض الصورة
+@admin.register(models.Store)
+class StoreAdmin(admin.ModelAdmin):
+    list_display = ['name', 'category', 'image_preview', 'products_count']
+    list_select_related = ['category']
+    search_fields = ['name']
+    list_per_page = 20
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />', obj.image.url)
+        return "No Image"
+    image_preview.short_description = "Image"
+
+    @admin.display(ordering='products_count')
+    def products_count(self, store):
+        url = (
+            reverse('admin:store_product_changelist')
+            + '?' + urlencode({'store__id': str(store.id)})
+        )
+        return format_html('<a href="{}">{} Products</a>', url, store.products_count or 0)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            products_count=Count('products', distinct=True)
+        )
+
+# ✅ Category Admin - عرض الصورة
+@admin.register(models.Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'image_preview', 'stores_count']
+    search_fields = ['name']
+    list_per_page = 20
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />', obj.image.url)
+        return "No Image"
+    image_preview.short_description = "Image"
+
+    @admin.display(ordering='stores_count')
+    def stores_count(self, category):
+        url = (
+            reverse('admin:store_store_changelist')
+            + '?' + urlencode({'category__id': str(category.id)})
+        )
+        return format_html('<a href="{}">{} Stores</a>', url, getattr(category, 'stores_count', 0))
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            stores_count=Count('stores')
+        )
+
+# ✅ Product Admin - عرض الصورة
+@admin.register(models.Product)
+class ProductAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ['title']}
+    list_display = ['title', 'unit_price','price_after_discount', 'store', 'image_preview']
+    list_editable = ['price_after_discount']
+    list_filter = ['store', 'last_update']
+    list_per_page = 10
+    list_select_related = ['store']
+    search_fields = ['title']
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />', obj.image.url)
+        return "No Image"
+    image_preview.short_description = "Image"
+
+# ✅ User Admin
+@admin.register(models.User)
+class UserAdmin(BaseUserAdmin):
+    list_display = ('id', 'full_name', 'phone', 'email', 'is_staff', 'is_active')
+    search_fields = ('full_name', 'phone', 'email')
+    ordering = ('full_name',)
+
+    fieldsets = (
+        (None, {'fields': ('phone', 'password')}),
+        ('Personal Info', {'fields': ('full_name', 'email', 'address', 'near_mark')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Important Dates', {'fields': ('last_login', 'date_joined')}),
+    )
+
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('phone', 'password1', 'password2', 'full_name', 'email', 'address', 'near_mark', 'is_staff', 'is_active'),
+        }),
+    )
+
+# ✅ OrderItem Inline
+class OrderItemInlineFormset(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        seen_products = {}
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                product = form.cleaned_data['product']
+                quantity = form.cleaned_data['quantity']
+                if product in seen_products:
+                    seen_products[product].quantity += quantity
+                    seen_products[product].save()
+                    form.cleaned_data['DELETE'] = True
+                else:
+                    seen_products[product] = form.instance
+
 
 
 
@@ -172,7 +323,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_select_related = ['customer']
     search_fields = ['id', 'customer__phone', 'customer__full_name']
     ordering = ['-placed_at']
-    list_per_page = 25  # Add pagination to reduce admin load
+    list_per_page = 20  # Add pagination to reduce admin load
 
     @admin.display(description="وقت الطلب")
     def formatted_placed_at(self, obj):
