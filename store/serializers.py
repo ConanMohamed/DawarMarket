@@ -58,10 +58,16 @@ class StoreSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     
     store_category = StoreCategorySerializer()
+    image = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Product
         fields = ['id', 'title', 'description', 'unit_price','price_after_discount', 'store', 'store_category', 'image']
+        
+        
+    def get_image(self, obj):
+        return obj.image.url if obj.image else None
 
     
 
