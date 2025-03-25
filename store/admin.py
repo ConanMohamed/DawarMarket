@@ -228,4 +228,4 @@ class OrderAdmin(admin.ModelAdmin):
 
     # Removed the JS injection to reduce admin slowness
     class Media:
-        js = []
+            js = ('rest_framework/js/auto-refresh.js',)
