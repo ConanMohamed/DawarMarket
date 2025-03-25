@@ -146,77 +146,38 @@ class OrderItemInlineFormset(BaseInlineFormSet):
                 else:
                     seen_products[product] = form.instance
 
+
+
+
 class OrderItemInline(admin.TabularInline):
     model = models.OrderItem
     extra = 1
-    formset = OrderItemInlineFormset
     fields = ['product', 'quantity', 'price_after_discount_display', 'total_item_price_display']
     readonly_fields = ['price_after_discount_display', 'total_item_price_display']
 
     def price_after_discount_display(self, obj):
         return f"{obj.product.price_after_discount:.2f} EGP" if obj.product else "-"
-    price_after_discount_display.short_description = "Price After Discount"
 
     def total_item_price_display(self, obj):
         if obj.product:
             return f"{obj.quantity * obj.product.price_after_discount:.2f} EGP"
         return "-"
-    total_item_price_display.short_description = "Total Item Price (After Discount)"
 
-# ✅ Order Admin
+
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
-    @admin.display(description="وقت الطلب")
-    def formatted_placed_at(self, obj):
-        local_time = localtime(obj.placed_at)
-        return date_format(local_time, format='DATETIME_FORMAT', use_l10n=True)
-
     autocomplete_fields = ['customer']
     inlines = [OrderItemInline]
     list_display = ['id', 'formatted_placed_at', 'customer_info', 'total_price_display']
     list_select_related = ['customer']
     search_fields = ['id', 'customer__phone', 'customer__full_name']
     ordering = ['-placed_at']
+    list_per_page = 25  # Add pagination to reduce admin load
 
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-        obj.calculate_total_price()
-
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        for order in queryset:
-            order.calculate_total_price(save=True)
-        return queryset
-
-    def save_related(self, request, form, formsets, change):
-        super().save_related(request, form, formsets, change)
-        form.instance.calculate_total_price(save=True)
-
-    @admin.display(ordering='total_price', description="Total Price (After Discount)")
-    def total_price_display(self, obj):
-        obj.refresh_from_db()
-        total_price = Decimal(obj.total_price) if obj.total_price else Decimal('0.00')
-        return format_html("<strong>{:.2f} EGP</strong>", total_price)
-
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('check-new-orders/', self.admin_site.admin_view(self.check_new_orders), name="check-new-orders"),
-        ]
-        return custom_urls + urls
-
-    def check_new_orders(self, request):
-        new_orders_count = models.Order.objects.filter(order_status="Pending").count()
-        return JsonResponse({"new_orders": new_orders_count})
-
-    def update_order_total(self, request):
-        orders = models.Order.objects.all()
-        data = {order.id: float(order.total_price) for order in orders}
-        return JsonResponse(data)
-
-    # ✅ كنسلنا الجافا سكريبت تماماً لتقليل التحميل الزائد
-    # class Media:
-    #     js = ('rest_framework/js/auto-refresh.js',)
+    @admin.display(description="وقت الطلب")
+    def formatted_placed_at(self, obj):
+        local_time = localtime(obj.placed_at)
+        return date_format(local_time, format='DATETIME_FORMAT', use_l10n=True)
 
     @admin.display(ordering='customer')
     def customer_info(self, order):
@@ -234,3 +195,34 @@ class OrderAdmin(admin.ModelAdmin):
     def total_price_display(self, order):
         total = float(order.total_price or 0)
         return format_html("<strong>{} EGP</strong>", "{:.2f}".format(total))
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        obj.calculate_total_price()
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        form.instance.calculate_total_price(save=True)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('check-new-orders/', self.admin_site.admin_view(self.check_new_orders), name="check-new-orders"),
+            path('update-order-total/<int:order_id>/', self.admin_site.admin_view(self.update_order_total), name="update-order-total"),
+        ]
+        return custom_urls + urls
+
+    def check_new_orders(self, request):
+        count = models.Order.objects.filter(order_status="Pending").count()
+        return JsonResponse({"new_orders": count})
+
+    def update_order_total(self, request, order_id):
+        try:
+            order = models.Order.objects.get(id=order_id)
+            return JsonResponse({"total_price": float(order.total_price)})
+        except models.Order.DoesNotExist:
+            return JsonResponse({"error": "Order not found"}, status=404)
+
+    # Removed the JS injection to reduce admin slowness
+    class Media:
+        js = []
