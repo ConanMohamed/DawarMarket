@@ -163,7 +163,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
         return float(obj.quantity * obj.product.price_after_discount)
 
 
+from django.utils.timezone import localtime
+
 class OrderSerializer(serializers.ModelSerializer):
+    placed_at = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)
     customer = serializers.CharField()
     total_price = serializers.SerializerMethodField()
@@ -174,22 +177,24 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price', 'store_name', 'store_image']
 
+    def get_placed_at(self, obj):
+        # بيرجع الوقت بالتوقيت المحلي على شكل ISO string
+        return localtime(obj.placed_at).strftime('%Y-%m-%d %H:%M')
+
     def get_total_price(self, obj):
-        """ حساب المجموع الإجمالي للطلب بناءً على السعر بعد الخصم """
         return sum(item.quantity * item.product.price_after_discount for item in obj.items.all())
 
     def get_store_name(self, obj):
-        """ جلب اسم المتجر من أول منتج في الطلب """
         first_item = obj.items.first()
         return first_item.product.store.name if first_item else None
 
     def get_store_image(self, obj):
-        """ جلب صورة المتجر إذا كانت موجودة """
         request = self.context.get('request')
         first_item = obj.items.first()
         if first_item and first_item.product.store.image:
             return request.build_absolute_uri(first_item.product.store.image.url)
         return None
+
 
 
 
