@@ -119,7 +119,7 @@ from django.conf import settings
 from decimal import Decimal
 
 class Order(models.Model):
-    ORDER_STATUS_PENDING = 'pending'
+    ORDER_STATUS_PENDING = 'Pending'
     ORDER_STATUS_SHIPPED = 'Shipped'
     ORDER_STATUS_DELIVERED = 'delivered'
     ORDER_STATUS_ACCEPTED = 'accepted'

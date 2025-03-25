@@ -215,9 +215,15 @@ class OrderAdmin(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
+    
+    
+    
     def check_new_orders(self, request):
-        count = models.Order.objects.filter(order_status="Pending").count()
-        return JsonResponse({"new_orders": count})
+    
+        new_orders_count = models.Order.objects.filter(order_status__iexact="pending").count()
+
+        return JsonResponse({"new_orders": new_orders_count})
+
 
     def update_order_total(self, request, order_id):
         try:
