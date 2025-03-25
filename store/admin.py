@@ -10,18 +10,10 @@ from django.urls import path
 from django.http import JsonResponse
 from django.utils.timezone import localtime
 from django.utils.formats import date_format
+from django.forms import BaseInlineFormSet
 
 # Register CartItem model
 admin.site.register(models.CartItem)
-
-
-
-
-
-
-
-
-
 
 # ✅ StoreCategory Admin - عرض الصورة
 @admin.register(models.StoreCategory)
@@ -40,8 +32,7 @@ class StoreCategoryAdmin(admin.ModelAdmin):
     def products_count(self, store_category):
         url = (
             reverse('admin:store_product_changelist')
-            + '?'
-            + urlencode({'store_category__id': str(store_category.id)})
+            + '?' + urlencode({'store_category__id': str(store_category.id)})
         )
         return format_html('<a href="{}">{} Products</a>', url, store_category.products_count or 0)
 
@@ -49,7 +40,6 @@ class StoreCategoryAdmin(admin.ModelAdmin):
         return super().get_queryset(request).annotate(
             products_count=Count('products', distinct=True)
         )
-
 
 # ✅ Store Admin - عرض الصورة
 @admin.register(models.Store)
@@ -68,8 +58,7 @@ class StoreAdmin(admin.ModelAdmin):
     def products_count(self, store):
         url = (
             reverse('admin:store_product_changelist')
-            + '?'
-            + urlencode({'store__id': str(store.id)})
+            + '?' + urlencode({'store__id': str(store.id)})
         )
         return format_html('<a href="{}">{} Products</a>', url, store.products_count or 0)
 
@@ -77,7 +66,6 @@ class StoreAdmin(admin.ModelAdmin):
         return super().get_queryset(request).annotate(
             products_count=Count('products', distinct=True)
         )
-
 
 # ✅ Category Admin - عرض الصورة
 @admin.register(models.Category)
@@ -95,8 +83,7 @@ class CategoryAdmin(admin.ModelAdmin):
     def stores_count(self, category):
         url = (
             reverse('admin:store_store_changelist')
-            + '?'
-            + urlencode({'category__id': str(category.id)})
+            + '?' + urlencode({'category__id': str(category.id)})
         )
         return format_html('<a href="{}">{} Stores</a>', url, getattr(category, 'stores_count', 0))
 
@@ -105,12 +92,10 @@ class CategoryAdmin(admin.ModelAdmin):
             stores_count=Count('stores')
         )
 
-
 # ✅ Product Admin - عرض الصورة
 @admin.register(models.Product)
 class ProductAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ['title']}
-    
     list_display = ['title', 'unit_price','price_after_discount', 'store', 'image_preview']
     list_editable = ['price_after_discount']
     list_filter = ['store', 'last_update']
@@ -124,12 +109,7 @@ class ProductAdmin(admin.ModelAdmin):
         return "No Image"
     image_preview.short_description = "Image"
 
-   
-
-    
-
-
-# User Admin
+# ✅ User Admin
 @admin.register(models.User)
 class UserAdmin(BaseUserAdmin):
     list_display = ('id', 'full_name', 'phone', 'email', 'is_staff', 'is_active')
@@ -150,66 +130,47 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
-# Order Item Inline
-from django.contrib import admin
-from django.utils.html import format_html
-from django.urls import path
-from django.http import JsonResponse
-from decimal import Decimal
-from django.forms import BaseInlineFormSet
-from . import models
-
-# ✅ قاعدة بيانات `OrderItemInline` لضمان عدم تكرار المنتج
+# ✅ OrderItem Inline
 class OrderItemInlineFormset(BaseInlineFormSet):
     def clean(self):
-        """التأكد من عدم إضافة نفس المنتج مرتين وزيادة الكمية بدلاً من ذلك"""
         super().clean()
         seen_products = {}
-
         for form in self.forms:
             if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                 product = form.cleaned_data['product']
                 quantity = form.cleaned_data['quantity']
-
                 if product in seen_products:
-                    # ✅ إذا كان المنتج مكررًا، يتم زيادة الكمية بدلاً من إضافة صف جديد
                     seen_products[product].quantity += quantity
                     seen_products[product].save()
-                    form.cleaned_data['DELETE'] = True  # منع إضافة صف جديد
+                    form.cleaned_data['DELETE'] = True
                 else:
                     seen_products[product] = form.instance
-
 
 class OrderItemInline(admin.TabularInline):
     model = models.OrderItem
     extra = 1
-    formset = OrderItemInlineFormset  # ✅ استبدال الـ formset لحل مشكلة التكرار
+    formset = OrderItemInlineFormset
     fields = ['product', 'quantity', 'price_after_discount_display', 'total_item_price_display']
     readonly_fields = ['price_after_discount_display', 'total_item_price_display']
 
     def price_after_discount_display(self, obj):
-        """عرض السعر بعد الخصم في الأدمن بانل"""
         return f"{obj.product.price_after_discount:.2f} EGP" if obj.product else "-"
     price_after_discount_display.short_description = "Price After Discount"
 
     def total_item_price_display(self, obj):
-        """حساب `total_item_price` باستخدام `price_after_discount`"""
         if obj.product:
             return f"{obj.quantity * obj.product.price_after_discount:.2f} EGP"
         return "-"
     total_item_price_display.short_description = "Total Item Price (After Discount)"
 
-
-# Order Admin
+# ✅ Order Admin
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
-
-
     @admin.display(description="وقت الطلب")
     def formatted_placed_at(self, obj):
         local_time = localtime(obj.placed_at)
         return date_format(local_time, format='DATETIME_FORMAT', use_l10n=True)
-     
+
     autocomplete_fields = ['customer']
     inlines = [OrderItemInline]
     list_display = ['id', 'formatted_placed_at', 'customer_info', 'total_price_display']
@@ -220,28 +181,23 @@ class OrderAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         obj.calculate_total_price()
-    
+
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         for order in queryset:
-            order.calculate_total_price(save=True)  # تحديث السعر قبل عرضه
+            order.calculate_total_price(save=True)
         return queryset
-    
+
     def save_related(self, request, form, formsets, change):
-        """تحديث `total_price` عند تعديل `OrderItem` داخل الطلب"""
         super().save_related(request, form, formsets, change)
-        form.instance.calculate_total_price(save=True)  # ✅ تحديث `total_price` بعد تعديل `OrderItem`
+        form.instance.calculate_total_price(save=True)
 
     @admin.display(ordering='total_price', description="Total Price (After Discount)")
     def total_price_display(self, obj):
-        """إظهار `total_price` بعد التأكد من جلب القيمة الصحيحة"""
         obj.refresh_from_db()
         total_price = Decimal(obj.total_price) if obj.total_price else Decimal('0.00')
         return format_html("<strong>{:.2f} EGP</strong>", total_price)
 
-
-
-    # ✅ إضافة API داخل الأدمن بانل لجلب عدد الطلبات الجديدة
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
@@ -249,29 +205,18 @@ class OrderAdmin(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
-    # ✅ API لحساب عدد الطلبات الجديدة
     def check_new_orders(self, request):
         new_orders_count = models.Order.objects.filter(order_status="Pending").count()
         return JsonResponse({"new_orders": new_orders_count})
-    # ✅ تحميل JavaScript داخل صفحة الأدمن 
-    
+
     def update_order_total(self, request):
-        """إرجاع السعر المحدث لكل الطلبات لتحديثه في الأدمن بانل بدون تحديث الصفحة"""
         orders = models.Order.objects.all()
         data = {order.id: float(order.total_price) for order in orders}
         return JsonResponse(data)
-    
-    
-    
-    class Media:
-       
-       js = ('rest_framework/js/auto-refresh.js',)
 
-    
-
-    
-    
-
+    # ✅ كنسلنا الجافا سكريبت تماماً لتقليل التحميل الزائد
+    # class Media:
+    #     js = ('rest_framework/js/auto-refresh.js',)
 
     @admin.display(ordering='customer')
     def customer_info(self, order):
@@ -289,6 +234,3 @@ class OrderAdmin(admin.ModelAdmin):
     def total_price_display(self, order):
         total = float(order.total_price or 0)
         return format_html("<strong>{} EGP</strong>", "{:.2f}".format(total))
-
-
-
