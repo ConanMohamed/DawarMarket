@@ -4,7 +4,8 @@ from decimal import Decimal
 from django.db import transaction
 from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
 from rest_framework.reverse import reverse
-
+from django.utils.timezone import localtime
+from django.utils.formats import date_format
 
 class CategorySerializer(serializers.ModelSerializer):
     total_stores = serializers.SerializerMethodField()
@@ -169,6 +170,7 @@ class OrderSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
     store_name = serializers.SerializerMethodField()
     store_image = serializers.SerializerMethodField()
+    placed_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -190,6 +192,11 @@ class OrderSerializer(serializers.ModelSerializer):
         if first_item and first_item.product.store.image:
             return request.build_absolute_uri(first_item.product.store.image.url)
         return None
+    
+    
+    def get_placed_at(self, obj):
+        local_time = localtime(obj.placed_at)
+        return date_format(local_time, format='DATETIME_FORMAT', use_l10n=True)
 
 
 
