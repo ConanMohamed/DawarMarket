@@ -42,6 +42,8 @@ class StoreCategorySerializer(serializers.ModelSerializer):
 
 class StoreSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
+    image = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Store
@@ -51,6 +53,9 @@ class StoreSerializer(serializers.ModelSerializer):
 
     def get_products_count(self, store: Store):
         return store.products.count()
+    
+    def get_image(self, obj):
+        return obj.image.url if obj.image else None
 
     
 
