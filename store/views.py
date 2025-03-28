@@ -159,7 +159,21 @@ class CategoryViewSet(ModelViewSet):
         return Category.objects.all().prefetch_related('stores')
 
 
-from django.shortcuts import render
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from django.shortcuts import render, redirect
+from django.contrib import messages
 
-def delete_account_view(request):
-    return render(request, 'delete_account.html')
+def delete_account_form(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+
+        user = authenticate(request, username=email, password=password)
+        if user:
+            user.delete()
+            return render(request, 'delete_success.html')
+        else:
+            messages.error(request, 'Invalid email or password.')
+
+    return render(request, 'delete_account_form.html')
