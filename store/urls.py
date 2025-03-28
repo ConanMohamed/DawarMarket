@@ -16,7 +16,12 @@ router.register('storecategories', views.StoreCategoryViewSet, basename='storeca
 cart_item_router = routers.NestedSimpleRouter(router, 'cart', lookup='cart')
 cart_item_router.register('items', views.CartItemViewSet, basename='cart-items')
 
-urlpatterns = router.urls + cart_item_router.urls+path('delete-account/', views.delete_account_view, name='delete-account'),
-
+urlpatterns = (
+    router.urls +
+    cart_item_router.urls +
+    [
+        path('delete-account/', views.delete_account_view, name='delete-account'),
+    ]
+)
 
 
