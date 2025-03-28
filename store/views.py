@@ -157,3 +157,9 @@ class CategoryViewSet(ModelViewSet):
 
     def get_queryset(self):
         return Category.objects.all().prefetch_related('stores')
+
+
+from django.shortcuts import render
+
+def delete_account_view(request):
+    return render(request, 'delete_account.html')
