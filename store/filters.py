@@ -25,7 +25,13 @@ class ProductFilter(django_filters.FilterSet):
                 price_after_discount__isnull=False,
                 unit_price__isnull=False
             )
-        return queryset
+        else:
+            return queryset.filter(
+                price_after_discount__gte=models.F('unit_price'),
+                price_after_discount__isnull=False,
+                unit_price__isnull=False
+            )
+
 
     
     
