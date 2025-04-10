@@ -171,11 +171,12 @@ class OrderItemInline(admin.TabularInline):
 class OrderAdmin(admin.ModelAdmin):
     autocomplete_fields = ['customer']
     inlines = [OrderItemInline]
-    list_display = ['id', 'formatted_placed_at', 'customer_info', 'total_price_display']
+    list_display = ['id', 'formatted_placed_at', 'customer_info','order_status', 'total_price_display']
     list_select_related = ['customer']
     search_fields = ['id', 'customer__phone', 'customer__full_name']
     ordering = ['-placed_at']
     list_per_page = 20  # Add pagination to reduce admin load
+    list_filter = ['order_status']
 
     @admin.display(description="وقت الطلب")
     def formatted_placed_at(self, obj):
