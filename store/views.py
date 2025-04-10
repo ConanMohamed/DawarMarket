@@ -32,10 +32,7 @@ class ProductViewSet(ModelViewSet):
 
     def get_queryset(self):
         queryset = Product.objects.select_related('store').prefetch_related('store__category', 'store_category', 'orderitems')
-        available = self.request.query_params.get('available', None)
-        if available:
-            queryset = queryset.filter(inventory__gt=0)  # ✅ جلب المنتجات المتاحة فقط عند طلب ذلك
-        return queryset
+        
 
     def get_serializer_context(self):
         return {'request': self.request}
