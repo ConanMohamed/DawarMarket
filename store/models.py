@@ -79,6 +79,7 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     image = CloudinaryField('image', null=True, blank=True)
+    available = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         if not self.slug:

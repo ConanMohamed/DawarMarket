@@ -12,7 +12,8 @@ class ProductFilter(django_filters.FilterSet):
     # البحث باستخدام اسم المتجر
     store_name = django_filters.CharFilter(field_name="store__name", lookup_expr='icontains')
     store = django_filters.NumberFilter(field_name="store__id")  # ✅ فلترة حسب المتجر بالـ ID
-    has_discount = django_filters.BooleanFilter(method='filter_has_discount')
+    has_discount = django_filters.BooleanFilter(method='filter_has_discount',label='Has discount')
+    available = django_filters.BooleanFilter(field_name='available')
     
     
     def filter_has_discount(self, queryset, name, value):
@@ -24,7 +25,7 @@ class ProductFilter(django_filters.FilterSet):
     
     class Meta:
         model = Product
-        fields = ['title', 'store_name','store', 'min_price', 'max_price','store_category','has_discount']
+        fields = ['title', 'store_name','store', 'min_price', 'max_price','store_category','has_discount','available']
 
 
 
