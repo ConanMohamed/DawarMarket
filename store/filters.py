@@ -20,8 +20,13 @@ class ProductFilter(django_filters.FilterSet):
     
     def filter_has_discount(self, queryset, name, value):
         if value:
-            return queryset.filter(price_after_discount__lt=models.F('unit_price'))
+            return queryset.filter(
+                price_after_discount__lt=models.F('unit_price'),
+                price_after_discount__isnull=False,
+                unit_price__isnull=False
+            )
         return queryset
+
     
     
     
