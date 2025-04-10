@@ -13,8 +13,8 @@ class ProductFilter(django_filters.FilterSet):
     store_name = django_filters.CharFilter(field_name="store__name", lookup_expr='icontains')
     store = django_filters.NumberFilter(field_name="store__id")  # ✅ فلترة حسب المتجر بالـ ID
     has_discount = django_filters.BooleanFilter(method='filter_has_discount',label='Has discount')
-    available = django_filters.BooleanFilter(field_name='Available')
-
+    available = django_filters.BooleanFilter(field_name="available")  # ✅ أهو دا الجديد
+    
     
     
     
