@@ -9,6 +9,8 @@ class ProductFilter(django_filters.FilterSet):
         model = Product
         fields = ['available']
 
+    def filter_available(self, queryset, name, value):
+        return queryset.filter(available=value)
 
 
 
