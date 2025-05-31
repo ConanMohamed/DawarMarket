@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
@@ -48,18 +49,22 @@ class ProductViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+
+    
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
     permission_classes = [IsAdminOrReadOnly]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_class = StoreFilter
+    filterset_fields = ['category']
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
-    
     def get_queryset(self):
-        return Store.objects.select_related('category').prefetch_related('products__store_category')
+        return Store.objects.select_related('category')\
+            .prefetch_related('products__store_category')\
+            .annotate(products_count=Count('products'))
+
 
 
 

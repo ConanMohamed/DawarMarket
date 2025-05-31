@@ -4,6 +4,8 @@ from decimal import Decimal
 from django.db import transaction
 from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
 from rest_framework.reverse import reverse
+from django.db.models import Count
+
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -38,32 +40,34 @@ class StoreCategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'store', 'image']
 
     
+class MiniCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name']
+
 
 
 class StoreSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
+    category = MiniCategorySerializer()
     image = serializers.SerializerMethodField()
-
+    products_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Store
-        fields = ['id', 'name','description','opens_at' ,'close_at','max_discount','category', 'products_count', 'image']
+        fields = [
+            'id', 'name', 'description', 'opens_at', 'close_at',
+            'max_discount', 'category', 'products_count', 'image'
+        ]
 
-    products_count = serializers.SerializerMethodField()
-
-    def get_products_count(self, store: Store):
-        return store.products.count()
-    
-    
     def get_image(self, obj):
         if obj.image:
             try:
                 url = obj.image.url
-                return url.replace('/upload/', '/upload/w_300,q_auto/')
+                return url.replace('/upload/', '/upload/w_300,q_auto,f_auto/')
             except:
                 return None
         return None
-
+    
 
 
 

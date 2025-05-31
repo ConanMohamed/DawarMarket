@@ -1,33 +1,32 @@
-from .managers import UserManager  # استيراد UserManager الجديد
-
+from .managers import UserManager
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from uuid import uuid4
 from django.utils.text import slugify
 from cloudinary.models import CloudinaryField
+from decimal import Decimal
 
 
-# User Model (المستخدم)
+# ✅ User Model (المستخدم)
 class User(AbstractUser):
     full_name = models.CharField(max_length=255)
     phone = models.CharField(max_length=20, unique=True)
     address = models.TextField(blank=True, null=True, default='oo')
     near_mark = models.CharField(max_length=250, blank=True, null=True)
 
-    USERNAME_FIELD = 'phone'  # تسجيل الدخول برقم الهاتف
+    USERNAME_FIELD = 'phone'
     REQUIRED_FIELDS = ['email', 'full_name']
 
-    username = None  # حذف username نهائيًا
+    username = None
+    objects = UserManager()
 
-    objects = UserManager()  # استخدام الـ UserManager الجديد
-    
     def __str__(self):
         return self.full_name
 
 
-# Category Model (تصنيف المنتجات)
+# ✅ Category Model
 class Category(models.Model):
     name = models.CharField(max_length=255, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -37,6 +36,7 @@ class Category(models.Model):
         return self.name
 
 
+# ✅ Store Model
 class Store(models.Model):
     name = models.CharField(max_length=255, unique=True)
     address = models.TextField()
@@ -47,7 +47,11 @@ class Store(models.Model):
     opens_at = models.TimeField(null=True, blank=True)
     close_at = models.TimeField(null=True, blank=True)
     image = CloudinaryField('image', null=True, blank=True)
-    max_discount = models.DecimalField(max_digits=3,decimal_places=1,blank=True, null=True)
+    max_discount = models.DecimalField(
+        max_digits=3, decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        blank=True, null=True
+    )
 
     def __str__(self):
         return f"{self.name} ({self.category.name})"
@@ -66,7 +70,7 @@ class StoreCategory(models.Model):
         unique_together = [['name', 'store']]
 
 
-# Product Model (منتج مرتبط بمحل معين)
+# ✅ Product Model
 class Product(models.Model):
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, blank=True)
@@ -83,7 +87,13 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title)
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while Product.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -93,18 +103,18 @@ class Product(models.Model):
         ordering = ['title']
 
 
-# Cart Model (عربة التسوق لكل مستخدم)
+# ✅ Cart Model
 class Cart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cart")  # ⬅️ تعديل لجعل كل مستخدم يمتلك عربة واحدة فقط
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cart")
 
     def __str__(self):
         return f"Cart of {self.user.full_name}"
 
 
-# CartItem Model (منتجات داخل كارت التسوق)
+# ✅ CartItem Model
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -114,11 +124,7 @@ class CartItem(models.Model):
         unique_together = [['cart', 'product']]
 
 
-# Order Model (الطلب مرتبط بالمحل)
-from django.db import models
-from django.conf import settings
-from decimal import Decimal
-
+# ✅ Order Model
 class Order(models.Model):
     ORDER_STATUS_PENDING = 'Pending'
     ORDER_STATUS_SHIPPED = 'Shipped'
@@ -142,52 +148,40 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def calculate_total_price(self, save=True):
-        """حساب `total_price` بناءً على `price_after_discount` بدلاً من `unit_price`"""
-        total = sum(item.quantity * item.product.price_after_discount for item in self.items.all())  # ✅ استخدام price_after_discount
-
-        if self.total_price != total:  # ✅ تجنب الحفظ إذا لم تتغير القيمة
+        total = sum(item.quantity * item.product.price_after_discount for item in self.items.all())
+        if self.total_price != total:
             self.total_price = total
             if save:
-                super().save(update_fields=['total_price'])  # ✅ تحديث `total_price` فقط بدون استدعاء `save()` كامل
-
-
+                super().save(update_fields=['total_price'])
 
     def __str__(self):
         return f"Order {self.id} - {self.customer.full_name}"
-        
+
     class Meta:
-      ordering = ['-placed_at']
+        ordering = ['-placed_at']
 
 
-
-
+# ✅ OrderItem Model
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='orderitems')
     quantity = models.PositiveSmallIntegerField()
-    unit_price = models.DecimalField(max_digits=6, decimal_places=2, editable=False)  # لا يمكن تعديله يدويًا
+    unit_price = models.DecimalField(max_digits=6, decimal_places=2, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        if not self.unit_price:  # تأكد من استخدام السعر بعد الخصم
-            self.unit_price = self.product.price_after_discount  
-        
+        if not self.unit_price:
+            self.unit_price = self.product.price_after_discount
         super().save(*args, **kwargs)
-
-        # تحديث السعر بعد الحفظ
         if self.order:
             self.order.calculate_total_price()
 
-
     def delete(self, *args, **kwargs):
-        order = self.order  # احفظ الطلب قبل الحذف
+        order = self.order
         super().delete(*args, **kwargs)
-        
-        # تحديث السعر بعد الحذف
         if order:
             order.calculate_total_price()
 
     def __str__(self):
         return f"OrderItem {self.product.title} ({self.quantity})"
-
