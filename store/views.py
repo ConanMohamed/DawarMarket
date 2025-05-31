@@ -9,6 +9,9 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin
 from rest_framework.decorators import action
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+
 from .filters import ProductFilter, StoreFilter, CategoryFilter
 from .pagination import DefaultPagination
 from .models import Product, Store, OrderItem, Cart, CartItem, Order, User, Category, StoreCategory
@@ -20,6 +23,8 @@ from .serializers import (
 from .permissions import IsAdminOrReadOnly, IsOrderOwnerOrAdmin
 
 
+@method_decorator(cache_page(60 * 5), name='list')
+@method_decorator(cache_page(60 * 2), name='retrieve')
 class ProductViewSet(ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -32,10 +37,9 @@ class ProductViewSet(ModelViewSet):
     ordering_fields = ['unit_price', 'last_update', 'id']
 
     def get_queryset(self):
-     return Product.objects.select_related('store').prefetch_related(
-        'store__category', 'store_category', 'orderitems'
-    )
-        
+        return Product.objects.select_related('store').prefetch_related(
+            'store__category', 'store_category', 'orderitems'
+        )
 
     def get_serializer_context(self):
         return {'request': self.request}
@@ -49,31 +53,21 @@ class ProductViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
-
-    
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
-
+@method_decorator(cache_page(60 * 5), name='list')
+@method_decorator(cache_page(60 * 2), name='retrieve')
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
     permission_classes = [IsAdminOrReadOnly]
+
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category']
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
-    @method_decorator(cache_page(60 * 2))  # كاش لمدة دقيقتين
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
-
     def get_queryset(self):
         return Store.objects.select_related('category').prefetch_related(
             'store_categories__products'
         )
-
-
-
-
 
 
 class StoreCategoryViewSet(ModelViewSet):
@@ -87,11 +81,9 @@ class StoreCategoryViewSet(ModelViewSet):
 
     def get_queryset(self):
         queryset = StoreCategory.objects.all().select_related('store')
-        
         store_id = self.request.query_params.get('store_id', None)
         if store_id:
-            queryset = queryset.filter(store_id=store_id)  # ✅ تصفية الفئات حسب المحل إذا تم طلب ذلك
-
+            queryset = queryset.filter(store_id=store_id)
         return queryset
 
 
@@ -148,7 +140,6 @@ class OrderViewSet(ModelViewSet):
         base_qs = Order.objects.select_related('customer').prefetch_related('items__product', 'items__product__store')
         return base_qs if self.request.user.is_staff else base_qs.filter(customer=self.request.user)
 
-
     def destroy(self, request, *args, **kwargs):
         order = get_object_or_404(Order, id=kwargs['pk'], customer=request.user)
         if order.order_status != Order.ORDER_STATUS_PENDING:
@@ -156,9 +147,6 @@ class OrderViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
-
-
-### ✅ **إعادة `CategoryViewSet` مع التحسينات**
 class CategoryViewSet(ModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -168,10 +156,8 @@ class CategoryViewSet(ModelViewSet):
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
 
-    
     def get_queryset(self):
-     return Category.objects.prefetch_related('stores__category')  # علشان store.category تكون محملة مسبقاً
-
+        return Category.objects.prefetch_related('stores__category')
 
 
 from django.contrib.auth import authenticate
