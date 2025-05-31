@@ -9,45 +9,6 @@ from django.utils.timezone import localtime
 from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
 
 
-class SimpleProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
-
-
-class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
-    products = SimpleProductSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = StoreCategory
-        fields = ['id', 'name', 'products']
-
-
-class StoreSerializer(serializers.ModelSerializer):
-    category = serializers.PrimaryKeyRelatedField(read_only=True)
-    store_categories = StoreCategoryWithProductsSerializer(many=True, read_only=True)
-    products_count = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Store
-        fields = [
-            'id', 'name', 'description', 'opens_at', 'close_at', 'max_discount',
-            'category', 'products_count', 'image', 'store_categories'
-        ]
-
-    def get_products_count(self, store: Store):
-        return store.products.count()
-
-    def get_image(self, obj):
-        if obj.image:
-            try:
-                url = obj.image.url
-                return url.replace('/upload/', '/upload/w_300,q_auto/')
-            except:
-                return None
-        return None
-
 
 class CategorySerializer(serializers.ModelSerializer):
     total_stores = serializers.SerializerMethodField()
@@ -72,6 +33,51 @@ class CategorySerializer(serializers.ModelSerializer):
             }
             for store in category.stores.all()
         ]
+
+
+
+
+class SimpleProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
+
+
+class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
+    products = SimpleProductSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = StoreCategory
+        fields = ['id', 'name', 'products']
+
+
+class StoreSerializer(serializers.ModelSerializer):
+    category = CategorySerializer()
+    store_categories = StoreCategoryWithProductsSerializer(many=True, read_only=True)
+    products_count = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Store
+        fields = [
+            'id', 'name', 'description', 'opens_at', 'close_at', 'max_discount',
+            'category', 'products_count', 'image', 'store_categories'
+        ]
+
+    def get_products_count(self, store: Store):
+        return store.products.count()
+
+    def get_image(self, obj):
+        if obj.image:
+            try:
+                url = obj.image.url
+                return url.replace('/upload/', '/upload/w_300,q_auto/')
+            except:
+                return None
+        return None
+
+
+
 
 
 class StoreCategorySerializer(serializers.ModelSerializer):
