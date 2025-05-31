@@ -21,6 +21,8 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'web-production-7ceef.up.railway.app,
 # ✅ إصلاح CSRF
 CSRF_TRUSTED_ORIGINS = [
     "https://web-production-7ceef.up.railway.app",
+    "https://dawarmarket.com",
+    "https://www.dawarmarket.com"
 ]
 
 # ✅ التطبيقات المثبتة
@@ -50,9 +52,19 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_brotli.middleware.BrotliMiddleware',
+
 ]
+
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "https://dawarmarket.com,https://www.dawarmarket.com").split(",")
+
 
 # ✅ إضافة debug_toolbar في `MIDDLEWARE` فقط عند `DEBUG=True`
 if DEBUG:

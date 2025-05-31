@@ -54,8 +54,18 @@ class StoreSerializer(serializers.ModelSerializer):
     def get_products_count(self, store: Store):
         return store.products.count()
     
+    
     def get_image(self, obj):
-        return obj.image.url if obj.image else None
+        if obj.image:
+            try:
+                url = obj.image.url
+                return url.replace('/upload/', '/upload/w_300,q_auto/')
+            except:
+                return None
+        return None
+
+
+
 
     
 
@@ -72,7 +82,16 @@ class ProductSerializer(serializers.ModelSerializer):
         
         
     def get_image(self, obj):
-        return obj.image.url if obj.image else None
+        if obj.image:
+            try:
+                url = obj.image.url
+                return url.replace('/upload/', '/upload/w_300,q_auto/')
+            except:
+                return None
+        return None
+
+
+
 
     
 
@@ -85,7 +104,16 @@ class SimpleProductSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'unit_price','price_after_discount', 'image']
 
     def get_image(self, obj):
-        return obj.image.url if obj.image else None
+        if obj.image:
+            try:
+                url = obj.image.url
+                return url.replace('/upload/', '/upload/w_300,q_auto/')
+            except:
+                return None
+        return None
+
+
+
 
 class CartItemSerializer(serializers.ModelSerializer):
     product = SimpleProductSerializer()

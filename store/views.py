@@ -31,7 +31,9 @@ class ProductViewSet(ModelViewSet):
     ordering_fields = ['unit_price', 'last_update', 'id']
 
     def get_queryset(self):
-        queryset = Product.objects.select_related('store').prefetch_related('store__category', 'store_category', 'orderitems')
+     return Product.objects.select_related('store').prefetch_related(
+        'store__category', 'store_category', 'orderitems'
+    )
         
 
     def get_serializer_context(self):
@@ -55,8 +57,10 @@ class StoreViewSet(ModelViewSet):
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
+    
     def get_queryset(self):
-        return Store.objects.all().select_related('category').prefetch_related('products', 'products__store_category')
+        return Store.objects.select_related('category').prefetch_related('products__store_category')
+
 
 
 class StoreCategoryViewSet(ModelViewSet):
@@ -128,10 +132,9 @@ class OrderViewSet(ModelViewSet):
         return OrderSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        if user.is_staff:
-            return Order.objects.all().select_related('customer').prefetch_related('items', 'items__product')
-        return Order.objects.filter(customer=user).select_related('customer').prefetch_related('items', 'items__product')
+        base_qs = Order.objects.select_related('customer').prefetch_related('items__product', 'items__product__store')
+        return base_qs if self.request.user.is_staff else base_qs.filter(customer=self.request.user)
+
 
     def destroy(self, request, *args, **kwargs):
         order = get_object_or_404(Order, id=kwargs['pk'], customer=request.user)
@@ -152,8 +155,10 @@ class CategoryViewSet(ModelViewSet):
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
 
+    
     def get_queryset(self):
-        return Category.objects.all().prefetch_related('stores')
+     return Category.objects.prefetch_related('stores__category')  # علشان store.category تكون محملة مسبقاً
+
 
 
 from django.contrib.auth import authenticate
