@@ -60,10 +60,12 @@ class StoreViewSet(ModelViewSet):
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
+    
     def get_queryset(self):
-        return Store.objects.select_related('category')\
-            .prefetch_related('products__store_category')\
-            .annotate(products_count=Count('products'))
+        return Store.objects.select_related('category').prefetch_related(
+            'store_categories__products'
+        )
+
 
 
 

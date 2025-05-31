@@ -47,26 +47,43 @@ class MiniCategorySerializer(serializers.ModelSerializer):
 
 
 
+class SimpleProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
+
+
+class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
+    products = SimpleProductSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = StoreCategory
+        fields = ['id', 'name', 'products']
+
+
 class StoreSerializer(serializers.ModelSerializer):
-    category = MiniCategorySerializer()
+    category = CategorySerializer()
     image = serializers.SerializerMethodField()
-    products_count = serializers.IntegerField(read_only=True)
+    store_categories = StoreCategoryWithProductsSerializer(many=True, read_only=True)
 
     class Meta:
         model = Store
-        fields = [
-            'id', 'name', 'description', 'opens_at', 'close_at',
-            'max_discount', 'category', 'products_count', 'image'
-        ]
+        fields = ['id', 'name', 'description', 'opens_at', 'close_at', 'max_discount', 'category', 'products_count', 'image', 'store_categories']
 
+    products_count = serializers.SerializerMethodField()
+
+    def get_products_count(self, store: Store):
+        return store.products.count()
+    
     def get_image(self, obj):
         if obj.image:
             try:
                 url = obj.image.url
-                return url.replace('/upload/', '/upload/w_300,q_auto,f_auto/')
+                return url.replace('/upload/', '/upload/w_300,q_auto/')
             except:
                 return None
         return None
+
     
 
 
@@ -100,21 +117,7 @@ class ProductSerializer(serializers.ModelSerializer):
     
 
 
-class SimpleProductSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Product
-        fields = ['id', 'title', 'unit_price','price_after_discount', 'image']
-
-    def get_image(self, obj):
-        if obj.image:
-            try:
-                url = obj.image.url
-                return url.replace('/upload/', '/upload/w_300,q_auto/')
-            except:
-                return None
-        return None
 
 
 
