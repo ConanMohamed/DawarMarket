@@ -43,8 +43,25 @@ class SimpleProductSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
 
 
+class LightweightProductSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'description', 'unit_price', 'price_after_discount', 'image']
+
+    def get_image(self, obj):
+        if obj.image:
+            try:
+                url = obj.image.url
+                return url.replace('/upload/', '/upload/w_300,q_auto/')
+            except:
+                return None
+        return None
+
+
 class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
-    products = SimpleProductSerializer(many=True, read_only=True)
+    products = LightweightProductSerializer(many=True, read_only=True)
 
     class Meta:
         model = StoreCategory
@@ -53,16 +70,14 @@ class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
 
 class StoreSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
-    store_categories = StoreCategoryWithProductsSerializer(many=True, read_only=True)
-    products_count = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
+    store_categories = StoreCategoryWithProductsSerializer(many=True, read_only=True)
 
     class Meta:
         model = Store
-        fields = [
-            'id', 'name', 'description', 'opens_at', 'close_at', 'max_discount',
-            'category', 'products_count', 'image', 'store_categories'
-        ]
+        fields = ['id', 'name', 'description', 'opens_at', 'close_at', 'max_discount', 'category', 'products_count', 'image', 'store_categories']
+
+    products_count = serializers.SerializerMethodField()
 
     def get_products_count(self, store: Store):
         return store.products.count()
@@ -75,7 +90,6 @@ class StoreSerializer(serializers.ModelSerializer):
             except:
                 return None
         return None
-
 
 
 
