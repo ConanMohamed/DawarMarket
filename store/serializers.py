@@ -2,10 +2,51 @@ from djoser.serializers import UserSerializer as BaseUserSerializer, UserCreateS
 from rest_framework import serializers
 from decimal import Decimal
 from django.db import transaction
-from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
-from rest_framework.reverse import reverse
 from django.db.models import Count
+from rest_framework.reverse import reverse
+from django.utils.timezone import localtime
 
+from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
+
+
+class SimpleProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
+
+
+class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
+    products = SimpleProductSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = StoreCategory
+        fields = ['id', 'name', 'products']
+
+
+class StoreSerializer(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(read_only=True)
+    store_categories = StoreCategoryWithProductsSerializer(many=True, read_only=True)
+    products_count = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Store
+        fields = [
+            'id', 'name', 'description', 'opens_at', 'close_at', 'max_discount',
+            'category', 'products_count', 'image', 'store_categories'
+        ]
+
+    def get_products_count(self, store: Store):
+        return store.products.count()
+
+    def get_image(self, obj):
+        if obj.image:
+            try:
+                url = obj.image.url
+                return url.replace('/upload/', '/upload/w_300,q_auto/')
+            except:
+                return None
+        return None
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -34,74 +75,19 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class StoreCategorySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = StoreCategory
         fields = ['id', 'name', 'store', 'image']
 
-    
-class MiniCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = ['id', 'name']
-
-
-
-class SimpleProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
-
-
-class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
-    products = SimpleProductSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = StoreCategory
-        fields = ['id', 'name', 'products']
-
-
-class StoreSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
-    image = serializers.SerializerMethodField()
-    store_categories = StoreCategoryWithProductsSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Store
-        fields = ['id', 'name', 'description', 'opens_at', 'close_at', 'max_discount', 'category', 'products_count', 'image', 'store_categories']
-
-    products_count = serializers.SerializerMethodField()
-
-    def get_products_count(self, store: Store):
-        return store.products.count()
-    
-    def get_image(self, obj):
-        if obj.image:
-            try:
-                url = obj.image.url
-                return url.replace('/upload/', '/upload/w_300,q_auto/')
-            except:
-                return None
-        return None
-
-    
-
-
-
-    
-
 
 class ProductSerializer(serializers.ModelSerializer):
-    
     store_category = StoreCategorySerializer()
     image = serializers.SerializerMethodField()
 
-
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'unit_price','price_after_discount', 'store', 'store_category', 'image','available']
-        
-        
+        fields = ['id', 'title', 'description', 'unit_price', 'price_after_discount', 'store', 'store_category', 'image', 'available']
+
     def get_image(self, obj):
         if obj.image:
             try:
@@ -110,16 +96,6 @@ class ProductSerializer(serializers.ModelSerializer):
             except:
                 return None
         return None
-
-
-
-
-    
-
-
-
-
-
 
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -127,12 +103,11 @@ class CartItemSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
 
     def get_total_price(self, cart_item: CartItem):
-        return cart_item.quantity * cart_item.product.price_after_discount  # استخدام price_after_discount
+        return cart_item.quantity * cart_item.product.price_after_discount
 
     class Meta:
         model = CartItem
         fields = ['id', 'product', 'quantity', 'total_price']
-
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -141,19 +116,16 @@ class CartSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
 
     def get_total_price(self, cart):
-        return sum(item.quantity * item.product.price_after_discount for item in cart.items.all())  # استخدام price_after_discount
+        return sum(item.quantity * item.product.price_after_discount for item in cart.items.all())
 
     class Meta:
         model = Cart
         fields = ['id', 'items', 'total_price']
 
 
-
 class AddCartItemSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(read_only=True)  # عرض ID بعد الإضافة
-    product = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all()
-    )
+    id = serializers.IntegerField(read_only=True)
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
 
     def save(self, **kwargs):
         cart_id = self.context['cart_id']
@@ -168,7 +140,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
             cart_item.quantity += quantity
             cart_item.save()
 
-        self.instance = cart_item  # مهم جدًا حتى يرجع الـ id في الاستجابة
+        self.instance = cart_item
         return cart_item
 
     class Meta:
@@ -176,13 +148,10 @@ class AddCartItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'quantity']
 
 
-
 class UpdateCartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ['quantity']
-
-
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -194,11 +163,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'quantity', 'total_item_price']
 
     def get_total_item_price(self, obj):
-        """ حساب السعر الإجمالي بناءً على السعر بعد الخصم """
         return float(obj.quantity * obj.product.price_after_discount)
 
-
-from django.utils.timezone import localtime
 
 class OrderSerializer(serializers.ModelSerializer):
     placed_at = serializers.SerializerMethodField()
@@ -213,7 +179,6 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price', 'store_name', 'store_image']
 
     def get_placed_at(self, obj):
-        # بيرجع الوقت بالتوقيت المحلي على شكل ISO string
         return localtime(obj.placed_at).strftime('%Y-%m-%d %H:%M')
 
     def get_total_price(self, obj):
@@ -229,9 +194,6 @@ class OrderSerializer(serializers.ModelSerializer):
         if first_item and first_item.product.store.image:
             return request.build_absolute_uri(first_item.product.store.image.url)
         return None
-
-
-
 
 
 class CreateOrderSerializer(serializers.Serializer):
@@ -256,13 +218,9 @@ class CreateOrderSerializer(serializers.Serializer):
                 for item in cart_items
             ]
             OrderItem.objects.bulk_create(order_items)
-
-            # ✅ السطر المهم لحل المشكلة
             order.calculate_total_price(save=True)
-
             Cart.objects.filter(pk=cart_id).delete()
             return order
-
 
 
 class UpdateOrderSerializer(serializers.ModelSerializer):
