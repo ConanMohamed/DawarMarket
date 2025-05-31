@@ -51,20 +51,26 @@ class ProductViewSet(ModelViewSet):
 
 
     
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
     permission_classes = [IsAdminOrReadOnly]
-
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category']
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
-    
+    @method_decorator(cache_page(60 * 2))  # كاش لمدة دقيقتين
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def get_queryset(self):
         return Store.objects.select_related('category').prefetch_related(
             'store_categories__products'
         )
+
 
 
 
