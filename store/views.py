@@ -113,6 +113,7 @@ class StoreViewSet(ModelViewSet):
         return Response(response.data)
 
 
+
 @method_decorator(cache_page(60), name='retrieve')
 @method_decorator(cache_page(60 * 5), name='list')
 class StoreCategoryViewSet(ModelViewSet):
@@ -124,12 +125,22 @@ class StoreCategoryViewSet(ModelViewSet):
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
 
+    
+    
     def get_queryset(self):
-        queryset = StoreCategory.objects.all().select_related('store')
-        store_id = self.request.query_params.get('store_id', None)
+        store_id = self.request.query_params.get('store_id')
         if store_id:
-            queryset = queryset.filter(store_id=store_id)
-        return queryset
+            return StoreCategory.objects.filter(store_id=store_id).prefetch_related(
+                Prefetch(
+                    'products',
+                    queryset=Product.objects.only(
+                        'id', 'title', 'unit_price', 'price_after_discount', 'image', 'store_category_id'
+                    )
+                )
+            )
+        return StoreCategory.objects.all().select_related('store')
+
+    
 
 
 class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, GenericViewSet):
