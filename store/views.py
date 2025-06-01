@@ -23,8 +23,8 @@ from .serializers import (
 from .permissions import IsAdminOrReadOnly, IsOrderOwnerOrAdmin
 
 
-@method_decorator(cache_page(60 * 5), name='list')
-@method_decorator(cache_page(60 * 2), name='retrieve')
+@method_decorator(cache_page(60), name='list')      # ← دقيقة واحدة كفاية
+@method_decorator(cache_page(30), name='retrieve')  # ← 30 ثانية
 class ProductViewSet(ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [IsAdminOrReadOnly]

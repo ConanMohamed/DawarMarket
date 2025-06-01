@@ -9,7 +9,6 @@ from django.utils.timezone import localtime
 from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
 
 
-
 class CategorySerializer(serializers.ModelSerializer):
     total_stores = serializers.SerializerMethodField()
     stores = serializers.SerializerMethodField()
@@ -35,12 +34,11 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
 
 
-
-
 class SimpleProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
+
 
 class LightweightProductSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
@@ -53,16 +51,18 @@ class LightweightProductSerializer(serializers.ModelSerializer):
         if obj.image:
             try:
                 url = obj.image.url
-                return url.replace('/upload/', '/upload/w_300,q_auto/')
+                return url.replace('/upload/', '/upload/w_200,h_200,c_fill,q_auto,f_auto/')
             except:
                 return None
         return None
 
 
 class StoreCategorySerializer(serializers.ModelSerializer):
+    products = LightweightProductSerializer(many=True, read_only=True)
+
     class Meta:
         model = StoreCategory
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'products']
 
 
 class StoreSerializer(serializers.ModelSerializer):
@@ -87,12 +87,6 @@ class StoreSerializer(serializers.ModelSerializer):
             except:
                 return None
         return None
-
-
-class StoreCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = StoreCategory
-        fields = ['id', 'name', 'store', 'image']
 
 
 class ProductSerializer(serializers.ModelSerializer):
