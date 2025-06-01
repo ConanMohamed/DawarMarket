@@ -9,6 +9,33 @@ from django.utils.timezone import localtime
 from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
 
 
+
+class LightweightProductSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'unit_price', 'price_after_discount', 'description', 'image']
+
+    def get_image(self, obj):
+        if obj.image:
+            try:
+                url = obj.image.url
+                return url.replace('/upload/', '/upload/w_200,q_auto,f_auto/')
+            except:
+                return None
+        return None
+    
+    
+class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
+    products = LightweightProductSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = StoreCategory
+        fields = ['id', 'name', 'products']
+
+
+
 class CategorySerializer(serializers.ModelSerializer):
     total_stores = serializers.SerializerMethodField()
     stores = serializers.SerializerMethodField()
