@@ -60,8 +60,11 @@ from django.views.decorators.cache import cache_page
 
 
 
+from rest_framework.response import Response
 from django.core.cache import cache
 
+@method_decorator(cache_page(60 * 5), name='list')
+@method_decorator(cache_page(60), name='retrieve')
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -72,29 +75,22 @@ class StoreViewSet(ModelViewSet):
     ordering_fields = ['name', 'created_at']
 
     def get_queryset(self):
-        return Store.objects.select_related('category').prefetch_related(
-            'store_categories__products'
-        )
-
-    def get_serializer_context(self):
-        return {'request': self.request}
+        return Store.objects.select_related('category').prefetch_related('store_categories__products')
 
     def list(self, request, *args, **kwargs):
         try:
-            cache_key = f"store_list:{request.get_full_path()}"
-            data = cache.get(cache_key)
+            key = f"store_list:{request.get_full_path()}"
+            data = cache.get(key)
             if data:
-                print("✅ FROM CACHE")
                 return Response(data)
 
-            print("🟡 FETCHING FROM DB")
             response = super().list(request, *args, **kwargs)
-            cache.set(cache_key, response.data, timeout=60 * 5)
-            return response
+            cache.set(key, response.data, timeout=60 * 5)
+            return Response(response.data)
 
         except Exception as e:
             import traceback
-            print("❌ STORE LIST ERROR:", str(e))
+            print("❌ ERROR IN STORE LIST:", str(e))
             traceback.print_exc()
             return Response({'error': f'Server error: {str(e)}'}, status=500)
 
