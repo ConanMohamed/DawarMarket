@@ -63,31 +63,31 @@ from django.views.decorators.cache import cache_page
 from rest_framework.response import Response
 from django.core.cache import cache
 
+@method_decorator(cache_page(60), name='retrieve')
 @method_decorator(cache_page(60 * 5), name='list')
-@method_decorator(cache_page(60 * 2), name='retrieve')
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
     permission_classes = [IsAdminOrReadOnly]
-
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category']
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
     def get_queryset(self):
-        return Store.objects.select_related('category').prefetch_related(
-            'store_categories__products'
-        )
+        return Store.objects.select_related('category').prefetch_related('store_categories__products')
+
+    def get_serializer_context(self):
+        return {'request': self.request}
 
     def list(self, request, *args, **kwargs):
-        cache_key = f"store_list:{request.get_full_path()}"
-        cached_data = cache.get(cache_key)
+        key = f"store_list:{request.get_full_path()}"
+        cached_data = cache.get(key)
         if cached_data:
             return Response(cached_data)
 
         response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, timeout=60 * 5)  # ✅ save only data
-        return response
+        cache.set(key, response.data, timeout=60 * 5)
+        return Response(response.data)
 
 
 class StoreCategoryViewSet(ModelViewSet):
