@@ -75,16 +75,21 @@ class StoreViewSet(ModelViewSet):
         return Store.objects.select_related('category').prefetch_related(
             'store_categories__products'
         )
-    
-    def list(self, request, *args, **kwargs):
-        key = f"store_list_{request.get_full_path()}"
-        cached_response = cache.get(key)
-        if cached_response:
-            return Response(cached_response)
 
+    def get_serializer_context(self):
+        return {'request': self.request}
+
+    def list(self, request, *args, **kwargs):
+        from django.core.cache import cache
+        cache_key = f"store_list:{request.get_full_path()}"
+        data = cache.get(cache_key)
+        if data:
+            return Response(data)
+        
         response = super().list(request, *args, **kwargs)
-        cache.set(key, response.data, timeout=60 * 5)
+        cache.set(cache_key, response.data, timeout=60 * 5)
         return response
+
 
 
 class StoreCategoryViewSet(ModelViewSet):
