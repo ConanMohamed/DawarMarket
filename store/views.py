@@ -23,8 +23,8 @@ from .serializers import (
 from .permissions import IsAdminOrReadOnly, IsOrderOwnerOrAdmin
 
 
-@method_decorator(cache_page(60), name='list')      # ← دقيقة واحدة كفاية
-@method_decorator(cache_page(30), name='retrieve')  # ← 30 ثانية
+@method_decorator(cache_page(60), name='retrieve')      # ← دقيقة واحدة
+@method_decorator(cache_page(60 * 5), name='list')       # ← 5 دقايق
 class ProductViewSet(ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -89,7 +89,8 @@ class StoreViewSet(ModelViewSet):
         cache.set(key, response.data, timeout=60 * 5)
         return Response(response.data)
 
-
+@method_decorator(cache_page(60), name='retrieve')
+@method_decorator(cache_page(60 * 5), name='list')
 class StoreCategoryViewSet(ModelViewSet):
     serializer_class = StoreCategorySerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -167,6 +168,8 @@ class OrderViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+@method_decorator(cache_page(60), name='retrieve')
+@method_decorator(cache_page(60 * 5), name='list')
 class CategoryViewSet(ModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
