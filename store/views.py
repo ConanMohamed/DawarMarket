@@ -82,12 +82,15 @@ class StoreViewSet(ModelViewSet):
             Prefetch(
                 'store_categories',
                 queryset=StoreCategory.objects.prefetch_related(
-                    Prefetch('products', queryset=Product.objects.only(
-                        'id', 'title', 'unit_price', 'price_after_discount', 'description', 'image', 'store_category_id'
-                    ))
+                    Prefetch(
+                        'products',
+                        queryset=Product.objects.only(
+                            'id', 'title', 'unit_price', 'price_after_discount', 'description', 'image', 'store_category_id'
+                        )
+                    )
                 )
             )
-    )
+        )
 
 
     def get_serializer_context(self):
