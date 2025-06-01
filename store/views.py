@@ -9,6 +9,8 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin
 from rest_framework.decorators import action
 
+from django.db.models import Prefetch
+
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 
@@ -73,21 +75,40 @@ class StoreViewSet(ModelViewSet):
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
+
+
     def get_queryset(self):
-        return Store.objects.select_related('category').prefetch_related('store_categories__products')
+        return Store.objects.select_related('category').prefetch_related(
+            Prefetch(
+                'store_categories',
+                queryset=StoreCategory.objects.prefetch_related(
+                    Prefetch('products', queryset=Product.objects.only(
+                        'id', 'title', 'unit_price', 'price_after_discount', 'description', 'image', 'store_category_id'
+                    ))
+                )
+            )
+    )
+
 
     def get_serializer_context(self):
         return {'request': self.request}
 
     def list(self, request, *args, **kwargs):
-        key = f"store_list:{request.get_full_path()}"
-        cached_data = cache.get(key)
-        if cached_data:
-            return Response(cached_data)
+    # Generate a unique cache key based on the full request path (including filters, pagination, etc.)
+        cache_key = f"store_list:{request.get_full_path()}"
+        cached_response = cache.get(cache_key)
+        
+        if cached_response:
+            return Response(cached_response)
 
+        # Call the original list logic (this does the queryset, pagination, and serialization)
         response = super().list(request, *args, **kwargs)
-        cache.set(key, response.data, timeout=60 * 5)
+
+        # Cache the serialized response data for 5 minutes
+        cache.set(cache_key, response.data, timeout=300)
+
         return Response(response.data)
+
 
 @method_decorator(cache_page(60), name='retrieve')
 @method_decorator(cache_page(60 * 5), name='list')

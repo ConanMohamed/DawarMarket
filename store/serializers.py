@@ -9,6 +9,12 @@ from django.utils.timezone import localtime
 from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
 
 
+class StoreListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Store
+        fields = ['id', 'name', 'image', 'opens_at', 'close_at', 'max_discount', 'category']
+
+
 
 class LightweightProductSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
