@@ -83,14 +83,12 @@ class LightweightProductSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description', 'unit_price', 'price_after_discount', 'image']
 
     def get_image(self, obj):
-        if obj.image:
-            try:
-                url = obj.image.url
-                return url.replace('/upload/', '/upload/w_200,q_auto,f_auto/')
+        try:
+            return obj.image.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/')
 
-            except:
-                return None
-        return None
+        except:
+            return None
+
 
 
 class StoreCategorySerializer(serializers.ModelSerializer):

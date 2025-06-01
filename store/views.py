@@ -39,10 +39,12 @@ class ProductViewSet(ModelViewSet):
     ordering_fields = ['unit_price', 'last_update', 'id']
 
     
-        
+
     def get_queryset(self):
-        return Product.objects.select_related('store', 'store_category') \
-            .only('id', 'title', 'unit_price', 'price_after_discount', 'available', 'store_id', 'store_category_id', 'image')
+        return Product.objects.select_related('store', 'store_category').only(
+            'id', 'title', 'unit_price', 'price_after_discount', 'available', 'store_id', 'store_category_id', 'image'
+        )
+
 
 
     def get_serializer_context(self):
@@ -114,6 +116,7 @@ class StoreViewSet(ModelViewSet):
 
 
 
+
 @method_decorator(cache_page(60), name='retrieve')
 @method_decorator(cache_page(60 * 5), name='list')
 class StoreCategoryViewSet(ModelViewSet):
@@ -124,6 +127,9 @@ class StoreCategoryViewSet(ModelViewSet):
     filterset_fields = ['store_id']
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
+
+    
+    
 
     
     
@@ -139,6 +145,7 @@ class StoreCategoryViewSet(ModelViewSet):
                 )
             )
         return StoreCategory.objects.all().select_related('store')
+
 
     
 
