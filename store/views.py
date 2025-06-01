@@ -59,8 +59,9 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 
 
-@method_decorator(cache_page(60), name='retrieve')
-@method_decorator(cache_page(60 * 5), name='list')
+
+from django.core.cache import cache
+
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -74,6 +75,16 @@ class StoreViewSet(ModelViewSet):
         return Store.objects.select_related('category').prefetch_related(
             'store_categories__products'
         )
+    
+    def list(self, request, *args, **kwargs):
+        key = f"store_list_{request.get_full_path()}"
+        cached_response = cache.get(key)
+        if cached_response:
+            return Response(cached_response)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(key, response.data, timeout=60 * 5)
+        return response
 
 
 class StoreCategoryViewSet(ModelViewSet):
