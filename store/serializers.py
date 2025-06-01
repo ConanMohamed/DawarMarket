@@ -42,7 +42,6 @@ class SimpleProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
 
-
 class LightweightProductSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
@@ -60,18 +59,16 @@ class LightweightProductSerializer(serializers.ModelSerializer):
         return None
 
 
-class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
-    products = LightweightProductSerializer(many=True, read_only=True)
-
+class StoreCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = StoreCategory
-        fields = ['id', 'name', 'products']
+        fields = ['id', 'name']
 
 
 class StoreSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
     image = serializers.SerializerMethodField()
-    store_categories = StoreCategoryWithProductsSerializer(many=True, read_only=True)
+    store_categories = StoreCategorySerializer(many=True, read_only=True)
 
     class Meta:
         model = Store
@@ -90,8 +87,6 @@ class StoreSerializer(serializers.ModelSerializer):
             except:
                 return None
         return None
-
-
 
 
 class StoreCategorySerializer(serializers.ModelSerializer):
