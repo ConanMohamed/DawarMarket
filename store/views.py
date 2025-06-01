@@ -80,15 +80,23 @@ class StoreViewSet(ModelViewSet):
         return {'request': self.request}
 
     def list(self, request, *args, **kwargs):
-        from django.core.cache import cache
-        cache_key = f"store_list:{request.get_full_path()}"
-        data = cache.get(cache_key)
-        if data:
-            return Response(data)
-        
-        response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, timeout=60 * 5)
-        return response
+        try:
+            cache_key = f"store_list:{request.get_full_path()}"
+            data = cache.get(cache_key)
+            if data:
+                print("✅ FROM CACHE")
+                return Response(data)
+
+            print("🟡 FETCHING FROM DB")
+            response = super().list(request, *args, **kwargs)
+            cache.set(cache_key, response.data, timeout=60 * 5)
+            return response
+
+        except Exception as e:
+            import traceback
+            print("❌ STORE LIST ERROR:", str(e))
+            traceback.print_exc()
+            return Response({'error': f'Server error: {str(e)}'}, status=500)
 
 
 
