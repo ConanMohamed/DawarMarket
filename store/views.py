@@ -58,8 +58,9 @@ class ProductViewSet(ModelViewSet):
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 
-@method_decorator(cache_page(60 * 2), name='list')
+
 @method_decorator(cache_page(60), name='retrieve')
+@method_decorator(cache_page(60 * 5), name='list')
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
     permission_classes = [IsAdminOrReadOnly]
