@@ -36,10 +36,12 @@ class ProductViewSet(ModelViewSet):
     search_fields = ['title', 'description', 'store__name']
     ordering_fields = ['unit_price', 'last_update', 'id']
 
+    
+        
     def get_queryset(self):
-        return Product.objects.select_related('store').prefetch_related(
-            'store__category', 'store_category', 'orderitems'
-        )
+        return Product.objects.select_related('store', 'store_category') \
+            .only('id', 'title', 'unit_price', 'price_after_discount', 'available', 'store_id', 'store_category_id', 'image')
+
 
     def get_serializer_context(self):
         return {'request': self.request}

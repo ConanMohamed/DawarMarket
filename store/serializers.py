@@ -51,7 +51,8 @@ class LightweightProductSerializer(serializers.ModelSerializer):
         if obj.image:
             try:
                 url = obj.image.url
-                return url.replace('/upload/', '/upload/w_200,h_200,c_fill,q_auto,f_auto/')
+                return url.replace('/upload/', '/upload/w_200,q_auto,f_auto/')
+
             except:
                 return None
         return None
@@ -83,7 +84,8 @@ class StoreSerializer(serializers.ModelSerializer):
         if obj.image:
             try:
                 url = obj.image.url
-                return url.replace('/upload/', '/upload/w_300,q_auto/')
+                return url.replace('/upload/', '/upload/w_200,q_auto,f_auto/')
+
             except:
                 return None
         return None
@@ -101,7 +103,8 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.image:
             try:
                 url = obj.image.url
-                return url.replace('/upload/', '/upload/w_300,q_auto/')
+                return url.replace('/upload/', '/upload/w_200,q_auto,f_auto/')
+
             except:
                 return None
         return None
