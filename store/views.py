@@ -79,7 +79,7 @@ class StoreViewSet(ModelViewSet):
 
     def get_queryset(self):
         return Store.objects.select_related('category').only(
-            'id', 'name', 'image', 'opens_at', 'close_at', 'max_discount', 'category_id',
+            'id', 'name', 'image', 'opens_at', 'close_at', 'max_discount', 'description', 'category_id',
             'category__id', 'category__name', 'category__image'
         ).prefetch_related(
             Prefetch(
@@ -88,13 +88,14 @@ class StoreViewSet(ModelViewSet):
                     Prefetch(
                         'products',
                         queryset=Product.objects.only(
-                            'id', 'title', 'unit_price', 'price_after_discount', 'description',
-                            'image', 'store_category_id'
+                            'id', 'title', 'unit_price', 'price_after_discount',
+                            'description', 'image', 'store_category_id', 'available'
                         )
                     )
                 )
             )
         )
+
 
 
     def get_serializer_context(self):
@@ -125,6 +126,26 @@ class StoreViewSet(ModelViewSet):
         print(f"⏱ Total StoreCategory API time: {time.time() - start:.3f} sec")
 
         return Response(data)
+    
+    
+    
+import time
+
+def retrieve(self, request, *args, **kwargs):
+    start = time.time()
+    cache_key = f"store_detail:{request.get_full_path()}"
+
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        print(f"✅ Store detail from CACHE in {time.time() - start:.3f} sec")
+        return Response(cached_data)
+
+    response = super().retrieve(request, *args, **kwargs)
+    cache.set(cache_key, response.data, timeout=60)
+
+    print(f"⏱ Store detail from DB in {time.time() - start:.3f} sec")
+    return response
+
 
 
 
