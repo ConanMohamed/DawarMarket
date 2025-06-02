@@ -98,21 +98,34 @@ class StoreViewSet(ModelViewSet):
     def get_serializer_context(self):
         return {'request': self.request}
 
-    def list(self, request, *args, **kwargs):
-    # Generate a unique cache key based on the full request path (including filters, pagination, etc.)
-        cache_key = f"store_list:{request.get_full_path()}"
-        cached_response = cache.get(cache_key)
-        
-        if cached_response:
-            return Response(cached_response)
+import time
+from django.core.cache import cache
 
-        # Call the original list logic (this does the queryset, pagination, and serialization)
-        response = super().list(request, *args, **kwargs)
+def list(self, request, *args, **kwargs):
+    start = time.time()
 
-        # Cache the serialized response data for 5 minutes
-        cache.set(cache_key, response.data, timeout=300)
+    cache_key = f"store_categories:{request.get_full_path()}"
+    cached = cache.get(cache_key)
+    if cached:
+        print(f"✅ Returned store categories from CACHE in {time.time() - start:.3f} sec")
+        return Response(cached)
 
-        return Response(response.data)
+    print("📡 Not in cache, querying DB...")
+    queryset = self.filter_queryset(self.get_queryset())
+
+    t1 = time.time()
+    serializer = self.get_serializer(queryset, many=True)
+    t2 = time.time()
+
+    data = serializer.data
+    cache.set(cache_key, data, timeout=300)
+
+    print(f"⏱ QuerySet took {t1 - start:.3f} sec")
+    print(f"⏱ Serialization took {t2 - t1:.3f} sec")
+    print(f"⏱ Total StoreCategory API time: {time.time() - start:.3f} sec")
+
+    return Response(data)
+
 
 
 
