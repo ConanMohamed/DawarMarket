@@ -134,22 +134,53 @@ class StoreViewSet(ModelViewSet):
     
     
     
-import time
 
-def retrieve(self, request, *args, **kwargs):
-    start = time.time()
-    cache_key = f"store_detail:{request.get_full_path()}"
+    
+    def retrieve(self, request, *args, **kwargs):
+        import time
+        from django.core.cache import cache
+        from django.db.models import Prefetch
 
-    cached_data = cache.get(cache_key)
-    if cached_data:
-        print(f"✅ Store detail from CACHE in {time.time() - start:.3f} sec")
-        return Response(cached_data)
+        start = time.time()
+        store_id = kwargs.get('pk')
+        cache_key = f"store_detail:{store_id}"
 
-    response = super().retrieve(request, *args, **kwargs)
-    cache.set(cache_key, response.data, timeout=60)
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            print(f"✅ Store #{store_id} from CACHE in {time.time() - start:.3f}s")
+            return Response(cached_data)
 
-    print(f"⏱ Store detail from DB in {time.time() - start:.3f} sec")
-    return response
+        # بدل ما نستدعي super().retrieve، نجهّز البيانات يدويًا ونستخدم نفس logic
+        try:
+            store = Store.objects.select_related('category') \
+                .only(
+                    'id', 'name', 'description', 'opens_at', 'close_at', 'max_discount', 'image', 'category_id',
+                    'category__id', 'category__name', 'category__image'
+                ) \
+                .prefetch_related(
+                    Prefetch(
+                        'store_categories',
+                        queryset=StoreCategory.objects.only('id', 'name', 'store_id').prefetch_related(
+                            Prefetch(
+                                'products',
+                                queryset=Product.objects.only(
+                                    'id', 'title', 'unit_price', 'price_after_discount',
+                                    'image', 'store_category_id', 'available'
+                                )
+                            )
+                        )
+                    )
+                ).get(pk=store_id)
+
+        except Store.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=404)
+
+        serializer = StoreSerializer(store, context={'request': request})
+        data = serializer.data
+        cache.set(cache_key, data, timeout=300)
+
+        print(f"⏱ Store #{store_id} from DB in {time.time() - start:.3f}s")
+        return Response(data)
 
 
 
