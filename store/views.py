@@ -77,8 +77,6 @@ class StoreViewSet(ModelViewSet):
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
-
-
     def get_queryset(self):
         return Store.objects.select_related('category').prefetch_related(
             Prefetch(
@@ -94,37 +92,35 @@ class StoreViewSet(ModelViewSet):
             )
         )
 
-
     def get_serializer_context(self):
         return {'request': self.request}
 
-import time
-from django.core.cache import cache
+    def list(self, request, *args, **kwargs):
+        import time
+        start = time.time()
 
-def list(self, request, *args, **kwargs):
-    start = time.time()
+        cache_key = f"store_categories:{request.get_full_path()}"
+        cached = cache.get(cache_key)
+        if cached:
+            print(f"✅ Returned store categories from CACHE in {time.time() - start:.3f} sec")
+            return Response(cached)
 
-    cache_key = f"store_categories:{request.get_full_path()}"
-    cached = cache.get(cache_key)
-    if cached:
-        print(f"✅ Returned store categories from CACHE in {time.time() - start:.3f} sec")
-        return Response(cached)
+        print("📡 Not in cache, querying DB...")
+        queryset = self.filter_queryset(self.get_queryset())
 
-    print("📡 Not in cache, querying DB...")
-    queryset = self.filter_queryset(self.get_queryset())
+        t1 = time.time()
+        serializer = self.get_serializer(queryset, many=True)
+        t2 = time.time()
 
-    t1 = time.time()
-    serializer = self.get_serializer(queryset, many=True)
-    t2 = time.time()
+        data = serializer.data
+        cache.set(cache_key, data, timeout=300)
 
-    data = serializer.data
-    cache.set(cache_key, data, timeout=300)
+        print(f"⏱ QuerySet took {t1 - start:.3f} sec")
+        print(f"⏱ Serialization took {t2 - t1:.3f} sec")
+        print(f"⏱ Total StoreCategory API time: {time.time() - start:.3f} sec")
 
-    print(f"⏱ QuerySet took {t1 - start:.3f} sec")
-    print(f"⏱ Serialization took {t2 - t1:.3f} sec")
-    print(f"⏱ Total StoreCategory API time: {time.time() - start:.3f} sec")
+        return Response(data)
 
-    return Response(data)
 
 
 
