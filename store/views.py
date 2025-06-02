@@ -46,6 +46,24 @@ class ProductViewSet(ModelViewSet):
         )
 
 
+    def list(self, request, *args, **kwargs):
+        import time
+        from django.core.cache import cache
+
+        start = time.time()
+        cache_key = f"product_list:{request.get_full_path()}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            print(f"✅ Product list from CACHE in {time.time() - start:.3f}s")
+            return Response(cached_data)
+
+        # أول مرة → شغل الاستعلام العادي
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 5)  # 5 دقايق
+        print(f"⏱ Product list from DB in {time.time() - start:.3f}s")
+        return Response(response.data)
+
+
 
     def get_serializer_context(self):
         return {'request': self.request}
@@ -57,6 +75,26 @@ class ProductViewSet(ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         return super().destroy(request, *args, **kwargs)
+    
+    def retrieve(self, request, *args, **kwargs):
+        import time
+        from django.core.cache import cache
+
+        start = time.time()
+        product_id = kwargs.get('pk')
+        cache_key = f"product_detail:{product_id}"
+
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            print(f"✅ Product #{product_id} from CACHE in {time.time() - start:.3f}s")
+            return Response(cached_data)
+
+        # لو مش متخزّن → استعلام عادي
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 5)  # 5 دقايق
+        print(f"⏱ Product #{product_id} from DB in {time.time() - start:.3f}s")
+        return Response(response.data)
+
 
 
 from django.utils.decorators import method_decorator
@@ -80,25 +118,23 @@ class StoreViewSet(ModelViewSet):
     from django.db.models import Prefetch
 
     def get_queryset(self):
-        return Store.objects.select_related('category') \
-            .only(
-                'id', 'name', 'description', 'opens_at', 'close_at', 'max_discount', 'image', 'category_id',
-                'category__id', 'category__name', 'category__image'
-            ) \
-            .prefetch_related(
-                Prefetch(
-                    'store_categories',
-                    queryset=StoreCategory.objects.only('id', 'name', 'store_id').prefetch_related(
-                        Prefetch(
-                            'products',
-                            queryset=Product.objects.only(
-                                'id', 'title', 'unit_price', 'price_after_discount',
-                                'image', 'store_category_id', 'available'
-                            )
+        # استرجاع بيانات أخف قدر الإمكان
+        return Store.objects.select_related('category').only(
+            'id', 'name', 'description', 'opens_at', 'close_at', 'max_discount', 'image', 'category_id'
+        ).prefetch_related(
+            Prefetch(
+                'store_categories',
+                queryset=StoreCategory.objects.only('id', 'name', 'store_id').prefetch_related(
+                    Prefetch(
+                        'products',
+                        queryset=Product.objects.only(
+                            'id', 'title', 'unit_price', 'price_after_discount', 'image', 'store_category_id'
                         )
                     )
                 )
             )
+        )
+
 
 
 
@@ -216,6 +252,24 @@ class StoreCategoryViewSet(ModelViewSet):
                 )
             )
         return StoreCategory.objects.all().select_related('store')
+    
+    
+    def list(self, request, *args, **kwargs):
+        import time
+        start = time.time()
+
+        store_id = request.query_params.get('store_id')
+        cache_key = f"store_categories:store_id:{store_id}" if store_id else f"store_categories:all"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            print(f"✅ StoreCategory list from CACHE in {time.time() - start:.3f}s")
+            return Response(cached_data)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=300)
+        print(f"⏱ StoreCategory list from DB in {time.time() - start:.3f}s")
+        return response
+
 
 
     
