@@ -77,24 +77,29 @@ class StoreViewSet(ModelViewSet):
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at']
 
+    from django.db.models import Prefetch
+
     def get_queryset(self):
-        return Store.objects.select_related('category').only(
-            'id', 'name', 'image', 'opens_at', 'close_at', 'max_discount', 'description', 'category_id',
-            'category__id', 'category__name', 'category__image'
-        ).prefetch_related(
-            Prefetch(
-                'store_categories',
-                queryset=StoreCategory.objects.only('id', 'name', 'store_id').prefetch_related(
-                    Prefetch(
-                        'products',
-                        queryset=Product.objects.only(
-                            'id', 'title', 'unit_price', 'price_after_discount',
-                            'description', 'image', 'store_category_id', 'available'
+        return Store.objects.select_related('category') \
+            .only(
+                'id', 'name', 'description', 'opens_at', 'close_at', 'max_discount', 'image', 'category_id',
+                'category__id', 'category__name', 'category__image'
+            ) \
+            .prefetch_related(
+                Prefetch(
+                    'store_categories',
+                    queryset=StoreCategory.objects.only('id', 'name', 'store_id').prefetch_related(
+                        Prefetch(
+                            'products',
+                            queryset=Product.objects.only(
+                                'id', 'title', 'unit_price', 'price_after_discount',
+                                'image', 'store_category_id', 'available'
+                            )
                         )
                     )
                 )
             )
-        )
+
 
 
 
