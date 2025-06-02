@@ -305,7 +305,9 @@ class CartItemViewSet(ModelViewSet):
     def get_queryset(self):
         return CartItem.objects.filter(cart__user=self.request.user).select_related('product', 'cart')
 
-
+import time
+@method_decorator(cache_page(60 * 3), name='list')       # كاش 3 دقايق لقائمة الأوردرات
+@method_decorator(cache_page(60), name='retrieve')       # كاش دقيقة واحدة لتفاصيل الأوردر
 class OrderViewSet(ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
     permission_classes = [IsOrderOwnerOrAdmin]
@@ -325,8 +327,25 @@ class OrderViewSet(ModelViewSet):
         return OrderSerializer
 
     def get_queryset(self):
-        base_qs = Order.objects.select_related('customer').prefetch_related('items__product', 'items__product__store')
+        base_qs = Order.objects.select_related('customer').only(
+            'id', 'customer_id', 'order_status', 'placed_at'
+        ).prefetch_related(
+            'items__product__store',
+            'items__product'
+        )
         return base_qs if self.request.user.is_staff else base_qs.filter(customer=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        start = time.time()
+        response = super().list(request, *args, **kwargs)
+        print(f"⏱ Orders LIST took {time.time() - start:.3f} sec")
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        start = time.time()
+        response = super().retrieve(request, *args, **kwargs)
+        print(f"⏱ Order RETRIEVE took {time.time() - start:.3f} sec")
+        return response
 
     def destroy(self, request, *args, **kwargs):
         order = get_object_or_404(Order, id=kwargs['pk'], customer=request.user)
