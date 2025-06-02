@@ -78,19 +78,24 @@ class StoreViewSet(ModelViewSet):
     ordering_fields = ['name', 'created_at']
 
     def get_queryset(self):
-        return Store.objects.select_related('category').prefetch_related(
+        return Store.objects.select_related('category').only(
+            'id', 'name', 'image', 'opens_at', 'close_at', 'max_discount', 'category_id',
+            'category__id', 'category__name', 'category__image'
+        ).prefetch_related(
             Prefetch(
                 'store_categories',
-                queryset=StoreCategory.objects.prefetch_related(
+                queryset=StoreCategory.objects.only('id', 'name', 'store_id').prefetch_related(
                     Prefetch(
                         'products',
                         queryset=Product.objects.only(
-                            'id', 'title', 'unit_price', 'price_after_discount', 'description', 'image', 'store_category_id'
+                            'id', 'title', 'unit_price', 'price_after_discount', 'description',
+                            'image', 'store_category_id'
                         )
                     )
                 )
             )
         )
+
 
     def get_serializer_context(self):
         return {'request': self.request}
