@@ -1,67 +1,49 @@
 import os
 import django
 import requests
-import time
-from django.conf import settings
 
-# إعداد بيئة Django
+# إعداد Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dwarmarket.settings')
 django.setup()
 
 BASE_URL = "https://dawarmarket.com"
-STATIC_URLS = [
-    "/store/stores/",
-    "/store/products/",
-    "/store/categories/",
-    "/store/orders/",
-]
 
-DELAY = 2  # تأخير خفيف بين كل طلب
-
-def get_json(url):
+def get_all_store_ids():
     try:
-        res = requests.get(url, timeout=10)
-        if res.status_code == 200:
-            return res.json()
-        else:
-            print(f"⚠️ Failed [{res.status_code}] → {url}")
+        print("📦 Fetching store IDs...")
+        res = requests.get(f"{BASE_URL}/store/stores/", timeout=10)
+        res.raise_for_status()
+        stores = res.json()
+        return [store["id"] for store in stores]
     except Exception as e:
-        print(f"❌ Error at {url}: {e}")
-    return []
-
-def warm_url(path):
-    url = f"{BASE_URL}{path}"
-    try:
-        print(f"🔥 Warming {url}")
-        res = requests.get(url, timeout=10)
-        print("✅ Success" if res.status_code == 200 else f"⚠️ Status {res.status_code}")
-    except Exception as e:
-        print(f"❌ Error warming {url}: {e}")
-    time.sleep(DELAY)
+        print(f"❌ Failed to fetch store IDs: {e}")
+        return []
 
 def warm_up():
-    # روابط عامة
-    for path in STATIC_URLS:
-        warm_url(path)
+    print("🔥 Starting warm-up...")
+    store_ids = get_all_store_ids()
 
-    # كل Store
-    stores = get_json(f"{BASE_URL}/store/stores/")
-    for store in stores:
-        store_id = store['id']
-        warm_url(f"/store/stores/{store_id}/")
-        warm_url(f"/store/storecategories/?store_id={store_id}")
+    urls = [
+        "/store/products/",
+        "/store/categories/",
+        "/store/orders/"
+    ]
 
-        # كل StoreCategory داخل الـ Store
-        categories = get_json(f"{BASE_URL}/store/storecategories/?store_id={store_id}")
-        for cat in categories:
-            cat_id = cat['id']
-            warm_url(f"/store/storecategories/{cat_id}/")
+    for store_id in store_ids:
+        urls.append(f"/store/stores/{store_id}/")
+        urls.append(f"/store/storecategories/?store_id={store_id}")
 
-            # المنتجات داخل كل StoreCategory (عن طريق استرجاع كل المنتجات، وتصفية store_category_id)
-            products = cat.get('products', [])
-            for product in products:
-                product_id = product['id']
-                warm_url(f"/store/products/{product_id}/")
+    for path in urls:
+        url = f"{BASE_URL}{path}"
+        try:
+            print(f"🌐 Warming: {url}")
+            res = requests.get(url, timeout=15)
+            if res.status_code == 200:
+                print(f"✅ Cached: {path}")
+            else:
+                print(f"⚠️ Failed {path} - status {res.status_code}")
+        except Exception as e:
+            print(f"❌ Error on {path}: {e}")
 
 if __name__ == "__main__":
     warm_up()
