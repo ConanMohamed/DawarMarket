@@ -4,7 +4,7 @@ import requests
 from django.conf import settings
 
 # ✅ إعداد بيئة Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dawarmarket.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dwarmarket.settings')
 django.setup()
 
 from store.models import Store, StoreCategory, Product
