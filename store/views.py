@@ -305,7 +305,11 @@ class CartItemViewSet(ModelViewSet):
     def get_queryset(self):
         return CartItem.objects.filter(cart__user=self.request.user).select_related('product', 'cart')
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
 import time
+
 @method_decorator(cache_page(60 * 3), name='list')       # كاش 3 دقايق لقائمة الأوردرات
 @method_decorator(cache_page(60), name='retrieve')       # كاش دقيقة واحدة لتفاصيل الأوردر
 class OrderViewSet(ModelViewSet):
@@ -352,6 +356,7 @@ class OrderViewSet(ModelViewSet):
         if order.order_status != Order.ORDER_STATUS_PENDING:
             return Response({'error': 'You can only delete orders that are pending.'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
 
 
 @method_decorator(cache_page(60), name='retrieve')

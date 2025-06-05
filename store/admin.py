@@ -25,7 +25,9 @@ class StoreCategoryAdmin(admin.ModelAdmin):
 
     def image_preview(self, obj):
         if obj.image:
-            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />', obj.image.url)
+            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />',
+                   obj.image.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/'))
+
         return "No Image"
     image_preview.short_description = "Image"
 
@@ -52,7 +54,9 @@ class StoreAdmin(admin.ModelAdmin):
 
     def image_preview(self, obj):
         if obj.image:
-            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />', obj.image.url)
+            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />',
+                   obj.image.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/'))
+
         return "No Image"
     image_preview.short_description = "Image"
 
@@ -78,7 +82,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
     def image_preview(self, obj):
         if obj.image:
-            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />', obj.image.url)
+           return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />',
+                   obj.image.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/'))
+
         return "No Image"
     image_preview.short_description = "Image"
 
@@ -108,7 +114,9 @@ class ProductAdmin(admin.ModelAdmin):
 
     def image_preview(self, obj):
         if obj.image:
-            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />', obj.image.url)
+            return format_html('<img src="{}" width="50px" style="border-radius: 5px;" />',
+                   obj.image.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/'))
+
         return "No Image"
     image_preview.short_description = "Image"
 
