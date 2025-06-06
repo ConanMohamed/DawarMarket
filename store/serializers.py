@@ -28,7 +28,8 @@ class LightweightProductSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         if obj.image:
             try:
-                return obj.image.url.replace('/upload/', '/upload/w_200,q_auto,f_auto/')
+                return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
+
             except:
                 return None
         return None
@@ -84,7 +85,8 @@ class LightweightProductSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         try:
-            return obj.image.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/')
+            return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
+
 
         except:
             return None
@@ -117,7 +119,8 @@ class StoreSerializer(serializers.ModelSerializer):
         if obj.image:
             try:
                 url = obj.image.url
-                return url.replace('/upload/', '/upload/w_200,q_auto,f_auto/')
+                return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
+
 
             except:
                 return None
@@ -136,7 +139,8 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.image:
             try:
                 url = obj.image.url
-                return url.replace('/upload/', '/upload/w_200,q_auto,f_auto/')
+                return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
+
 
             except:
                 return None
