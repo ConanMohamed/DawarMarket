@@ -222,7 +222,7 @@ class OrderAdmin(admin.ModelAdmin):
     @admin.display(ordering='total_price', description="Total Price")
     def total_price_display(self, order):
         total = float(order.total_price or 0)
-        return format_html("<strong>{:.2f} EGP</strong>", total)
+        return format_html("<strong>{} EGP</strong>", "{:.2f}".format(total))
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
