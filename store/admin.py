@@ -142,6 +142,17 @@ class UserAdmin(BaseUserAdmin):
     )
 
 # ✅ OrderItem Inline
+from django.contrib import admin
+from django.forms import BaseInlineFormSet
+from django.utils.timezone import localtime
+from django.utils.formats import date_format
+from django.utils.html import format_html
+from django.urls import path
+from django.http import JsonResponse
+
+from . import models
+
+
 class OrderItemInlineFormset(BaseInlineFormSet):
     def clean(self):
         super().clean()
@@ -149,42 +160,47 @@ class OrderItemInlineFormset(BaseInlineFormSet):
         for form in self.forms:
             if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                 product = form.cleaned_data['product']
-                quantity = form.cleaned_data['quantity']
                 if product in seen_products:
-                    seen_products[product].quantity += quantity
-                    seen_products[product].save()
+                    # mark the form for deletion to avoid duplication
                     form.cleaned_data['DELETE'] = True
                 else:
                     seen_products[product] = form.instance
 
 
-
-
 class OrderItemInline(admin.TabularInline):
     model = models.OrderItem
-    extra = 1
+    formset = OrderItemInlineFormset
+    extra = 1  # Don't show empty line by default
     fields = ['product', 'quantity', 'price_after_discount_display', 'total_item_price_display']
     readonly_fields = ['price_after_discount_display', 'total_item_price_display']
 
     def price_after_discount_display(self, obj):
-        return f"{obj.product.price_after_discount:.2f} EGP" if obj.product else "-"
+        try:
+            return f"{obj.product.price_after_discount:.2f} EGP"
+        except:
+            return "-"
 
     def total_item_price_display(self, obj):
-        if obj.product:
+        try:
             return f"{obj.quantity * obj.product.price_after_discount:.2f} EGP"
-        return "-"
+        except:
+            return "-"
 
 
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
     autocomplete_fields = ['customer']
     inlines = [OrderItemInline]
-    list_display = ['id', 'formatted_placed_at', 'customer_info','order_status', 'total_price_display']
+    list_display = ['id', 'formatted_placed_at', 'customer_info', 'order_status', 'total_price_display']
     list_select_related = ['customer']
     search_fields = ['id', 'customer__phone', 'customer__full_name']
     ordering = ['-placed_at']
-    list_per_page = 20  # Add pagination to reduce admin load
+    list_per_page = 20
     list_filter = ['order_status']
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related('items__product')  # optimize order item product queries
 
     @admin.display(description="وقت الطلب")
     def formatted_placed_at(self, obj):
@@ -193,8 +209,8 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.display(ordering='customer')
     def customer_info(self, order):
-        address = order.customer.address if order.customer.address else "—"
-        landmark = order.customer.near_mark if order.customer.near_mark else "—"
+        address = order.customer.address or "—"
+        landmark = order.customer.near_mark or "—"
         return format_html(
             "<strong>{}</strong><br>📞 {}<br>📍 {}<br>📌 {}",
             order.customer.full_name,
@@ -206,15 +222,15 @@ class OrderAdmin(admin.ModelAdmin):
     @admin.display(ordering='total_price', description="Total Price")
     def total_price_display(self, order):
         total = float(order.total_price or 0)
-        return format_html("<strong>{} EGP</strong>", "{:.2f}".format(total))
+        return format_html("<strong>{:.2f} EGP</strong>", total)
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        obj.calculate_total_price()
+        # removed redundant price calculation from here
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
-        form.instance.calculate_total_price(save=True)
+        form.instance.calculate_total_price(save=True)  # calculate once after saving everything
 
     def get_urls(self):
         urls = super().get_urls()
@@ -224,15 +240,9 @@ class OrderAdmin(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
-    
-    
-    
     def check_new_orders(self, request):
-    
         new_orders_count = models.Order.objects.filter(order_status__iexact="pending").count()
-
         return JsonResponse({"new_orders": new_orders_count})
-
 
     def update_order_total(self, request, order_id):
         try:
@@ -241,6 +251,5 @@ class OrderAdmin(admin.ModelAdmin):
         except models.Order.DoesNotExist:
             return JsonResponse({"error": "Order not found"}, status=404)
 
-    # Removed the JS injection to reduce admin slowness
     class Media:
-            js = ('rest_framework/js/auto-refresh.js',)
+        js = ('rest_framework/js/auto-refresh.js',)
