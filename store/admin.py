@@ -203,7 +203,7 @@ class OrderAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.prefetch_related('items__product')  # optimize order item product queries
+        return qs.prefetch_related('items__product')
 
     @admin.display(description="وقت الطلب")
     def formatted_placed_at(self, obj):
@@ -229,11 +229,10 @@ class OrderAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        # removed redundant price calculation from here
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
-        form.instance.calculate_total_price(save=True)  # calculate once after saving everything
+        form.instance.calculate_total_price(save=True)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -243,7 +242,6 @@ class OrderAdmin(admin.ModelAdmin):
             path('update-order-total/<int:order_id>/', self.admin_site.admin_view(self.update_order_total), name="update-order-total"),
         ]
         return custom_urls + urls
-
 
     def check_new_orders(self, request):
         new_orders_count = models.Order.objects.filter(order_status__iexact="pending").count()
@@ -270,10 +268,8 @@ class OrderAdmin(admin.ModelAdmin):
             messages.error(request, f"الطلب رقم {object_id} غير موجود")
             return redirect(reverse('admin:store_order_changelist'))
 
-    
     class Media:
         js = (
             'rest_framework/js/auto-refresh.js',
             'admin/js/order-print-button.js',
         )
-
