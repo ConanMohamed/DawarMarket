@@ -1,14 +1,18 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const tools = document.querySelector('.object-tools');
-    const match = window.location.pathname.match(/\/admin\/store\/order\/(\d+)\/change\/$/);
+    // Match both /admin/store/order/1/change/ and /admin/store/order/1/change
+    const match = window.location.pathname.match(/\/admin\/store\/order\/(\d+)\/change\/?$/);
     
-    if (tools && match) {
+    if (match) {
         const orderId = match[1];
-        const printBtn = document.createElement('a');
-        printBtn.innerText = "🖨️ طباعة الطلب";
-        printBtn.href = `/admin/store/order/${orderId}/print/`;
-        printBtn.className = "button";
-        printBtn.style.marginLeft = "10px";
-        tools.appendChild(printBtn);
+        const tools = document.querySelector('.object-tools');
+        
+        if (tools) {
+            const printBtn = document.createElement('a');
+            printBtn.innerText = "🖨️ طباعة الطلب";
+            printBtn.href = `/admin/store/order/${orderId}/print/`;
+            printBtn.className = "button";
+            printBtn.style.marginLeft = "10px";
+            tools.appendChild(printBtn);
+        }
     }
 });

@@ -261,16 +261,14 @@ class OrderAdmin(admin.ModelAdmin):
             order = models.Order.objects.select_related('customer').prefetch_related('items__product').get(pk=object_id)
             context = {
                 'order': order,
-                'title': f'Order #{order.id} - Print View',
+                'title': f'Order #{order.id}',
                 'opts': self.model._meta,
-                'original': order,
                 'has_view_permission': self.has_view_permission(request, order),
             }
             return TemplateResponse(request, 'admin/store/order_print.html', context)
         except models.Order.DoesNotExist:
-            messages.error(request, "الطلب غير موجود")
+            messages.error(request, f"الطلب رقم {object_id} غير موجود")
             return redirect(reverse('admin:store_order_changelist'))
-
 
     
     class Media:
