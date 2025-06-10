@@ -1,10 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
     const tools = document.querySelector('.object-tools');
-    if (tools) {
+
+    const match = window.location.pathname.match(/\/(\d+)\/change\/$/);
+    if (tools && match) {
+        const orderId = match[1];
         const printBtn = document.createElement('a');
         printBtn.innerText = "🖨️ طباعة الطلب";
-        printBtn.href = window.location.pathname + "print/";
-        printBtn.className = "button"
+        printBtn.href = `/admin/store/order/${orderId}/print/`;
+        printBtn.className = "button";
         tools.appendChild(printBtn);
     }
 });
