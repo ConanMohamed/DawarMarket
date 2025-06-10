@@ -11,6 +11,8 @@ from django.http import JsonResponse
 from django.utils.timezone import localtime
 from django.utils.formats import date_format
 from django.forms import BaseInlineFormSet
+from django.template.response import TemplateResponse
+
 
 # Register CartItem model
 admin.site.register(models.CartItem)
@@ -235,10 +237,12 @@ class OrderAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
+            path('<int:object_id>/print/', self.admin_site.admin_view(self.print_order_view), name='print-order'),
             path('check-new-orders/', self.admin_site.admin_view(self.check_new_orders), name="check-new-orders"),
             path('update-order-total/<int:order_id>/', self.admin_site.admin_view(self.update_order_total), name="update-order-total"),
         ]
         return custom_urls + urls
+
 
     def check_new_orders(self, request):
         new_orders_count = models.Order.objects.filter(order_status__iexact="pending").count()
@@ -250,199 +254,22 @@ class OrderAdmin(admin.ModelAdmin):
             return JsonResponse({"total_price": float(order.total_price)})
         except models.Order.DoesNotExist:
             return JsonResponse({"error": "Order not found"}, status=404)
-    
-    def get_readonly_fields(self, request, obj=None):
-        readonly_fields = list(super().get_readonly_fields(request, obj))
-        if obj:  # If editing existing order
-            readonly_fields.append('order_actions')
-        return readonly_fields
-    
-    def order_actions(self, obj):
-        """Add copy and print buttons to order admin"""
-        if obj.pk:
-            return format_html(
-                '''
-                <div style="margin-top: 10px;">
-                    <button type="button" onclick="copyOrder({})" 
-                            style="margin-right: 10px; padding: 8px 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
-                        📋 نسخ الطلب
-                    </button>
-                    <button type="button" onclick="printOrder({})" 
-                            style="padding: 8px 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
-                        🖨️ طباعة الطلب
-                    </button>
-                </div>
-                <script>
-                async function copyOrder(orderId) {{
-                    try {{
-                        const response = await fetch(`/api/orders/${{orderId}}/copy/`);
-                        const data = await response.json();
-                        
-                        if (data.success) {{
-                            await navigator.clipboard.writeText(data.order_text);
-                            
-                            // Show success feedback
-                            const btn = event.target;
-                            const originalText = btn.textContent;
-                            btn.textContent = '✅ تم النسخ!';
-                            btn.style.backgroundColor = '#28a745';
-                            btn.style.color = 'white';
-                            
-                            setTimeout(() => {{
-                                btn.textContent = originalText;
-                                btn.style.backgroundColor = '#f8f9fa';
-                                btn.style.color = 'black';
-                            }}, 2000);
-                        }} else {{
-                            alert('حدث خطأ في نسخ الطلب: ' + data.error);
-                        }}
-                    }} catch (error) {{
-                        console.error('Error:', error);
-                        alert('حدث خطأ في نسخ الطلب');
-                    }}
-                }}
-                
-                async function printOrder(orderId) {{
-                    try {{
-                        const response = await fetch(`/api/orders/${{orderId}}/print/`);
-                        const data = await response.json();
-                        
-                        if (data.success) {{
-                            const printWindow = window.open('', '_blank');
-                            printWindow.document.write(generatePrintHTML(data.data));
-                            printWindow.document.close();
-                            printWindow.focus();
-                            printWindow.print();
-                        }} else {{
-                            alert('حدث خطأ في طباعة الطلب: ' + data.error);
-                        }}
-                    }} catch (error) {{
-                        console.error('Error:', error);
-                        alert('حدث خطأ في طباعة الطلب');
-                    }}
-                }}
-                
-                function generatePrintHTML(orderData) {{
-                    return `
-                    <!DOCTYPE html>
-                    <html lang="ar" dir="rtl">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>طلب رقم ${{orderData.order_info.id}}</title>
-                        <style>
-                            body {{
-                                font-family: 'Arial', sans-serif;
-                                margin: 20px;
-                                font-size: 14px;
-                                line-height: 1.6;
-                            }}
-                            .header {{
-                                text-align: center;
-                                border-bottom: 2px solid #333;
-                                padding-bottom: 10px;
-                                margin-bottom: 20px;
-                            }}
-                            .info-grid {{
-                                display: grid;
-                                grid-template-columns: 1fr 1fr;
-                                gap: 20px;
-                                margin-bottom: 20px;
-                            }}
-                            .info-section {{
-                                border: 1px solid #ddd;
-                                padding: 15px;
-                                border-radius: 5px;
-                            }}
-                            .info-section h3 {{
-                                margin-top: 0;
-                                border-bottom: 1px solid #eee;
-                                padding-bottom: 5px;
-                            }}
-                            table {{
-                                width: 100%;
-                                border-collapse: collapse;
-                                margin: 20px 0;
-                            }}
-                            th, td {{
-                                border: 1px solid #ddd;
-                                padding: 8px;
-                                text-align: right;
-                            }}
-                            th {{
-                                background-color: #f5f5f5;
-                                font-weight: bold;
-                            }}
-                            .total {{
-                                text-align: center;
-                                font-size: 18px;
-                                font-weight: bold;
-                                margin-top: 20px;
-                                padding: 15px;
-                                background: #f9f9f9;
-                                border: 2px solid #333;
-                            }}
-                            @media print {{
-                                body {{ margin: 0; }}
-                            }}
-                        </style>
-                    </head>
-                    <body>
-                        <div class="header">
-                            <h1>طلب رقم: ${{orderData.order_info.id}}</h1>
-                            <p>تاريخ الطلب: ${{orderData.order_info.placed_at}}</p>
-                        </div>
-                        
-                        <div class="info-grid">
-                            <div class="info-section">
-                                <h3>بيانات العميل</h3>
-                                <p><strong>الاسم:</strong> ${{orderData.customer_info.full_name}}</p>
-                                <p><strong>الهاتف:</strong> ${{orderData.customer_info.phone}}</p>
-                                <p><strong>العنوان:</strong> ${{orderData.customer_info.address}}</p>
-                                <p><strong>العلامة المميزة:</strong> ${{orderData.customer_info.near_mark}}</p>
-                            </div>
-                            
-                            <div class="info-section">
-                                <h3>بيانات الطلب</h3>
-                                <p><strong>حالة الطلب:</strong> ${{orderData.order_info.status}}</p>
-                                <p><strong>الإجمالي:</strong> ${{orderData.order_info.total_price}} جنيه</p>
-                            </div>
-                        </div>
-                        
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>الصنف</th>
-                                    <th>الكمية</th>
-                                    <th>السعر</th>
-                                    <th>الإجمالي</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${{orderData.items.map(item => `
-                                    <tr>
-                                        <td>${{item.product_title}}</td>
-                                        <td>${{item.quantity}}</td>
-                                        <td>${{item.unit_price}} جنيه</td>
-                                        <td>${{item.total_price}} جنيه</td>
-                                    </tr>
-                                `).join('')}}
-                            </tbody>
-                        </table>
-                        
-                        <div class="total">
-                            المجموع الكلي: ${{orderData.order_info.total_price}} جنيه مصري
-                        </div>
-                    </body>
-                    </html>
-                    `;
-                }}
-                </script>
-                ''',
-                obj.pk, obj.pk
-            )
-        return ""
-    
-    order_actions.short_description = "إجراءات الطلب"
 
+    def print_order_view(self, request, object_id):
+        order = models.Order.objects.select_related('customer').prefetch_related('items__product').get(pk=object_id)
+        context = {
+            'order': order,
+            'title': f'Order #{order.id} - Print View',
+            'opts': self.model._meta,
+            'original': order,
+        }
+        return TemplateResponse(request, 'admin/order_print.html', context)
+
+
+    
     class Media:
-        js = ('rest_framework/js/auto-refresh.js',)
+        js = (
+            'rest_framework/js/auto-refresh.js',
+            'admin/js/order-print-button.js',
+        )
+

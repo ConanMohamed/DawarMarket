@@ -22,7 +22,5 @@ urlpatterns = router.urls + cart_item_router.urls
 
 urlpatterns += [
     path('delete-account/', views.delete_account_form, name='delete-account-form'),
-     path('api/orders/<int:order_id>/copy/', views.copy_order_data, name='copy-order-data'),
-    path('api/orders/<int:order_id>/print/', views.print_order_data, name='print-order-data'),
 ]
 
