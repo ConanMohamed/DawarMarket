@@ -12,6 +12,7 @@ from django.utils.timezone import localtime
 from django.utils.formats import date_format
 from django.forms import BaseInlineFormSet
 from django.template.response import TemplateResponse
+from django.shortcuts import redirect
 
 
 # Register CartItem model
@@ -256,14 +257,19 @@ class OrderAdmin(admin.ModelAdmin):
             return JsonResponse({"error": "Order not found"}, status=404)
 
     def print_order_view(self, request, object_id):
-        order = models.Order.objects.select_related('customer').prefetch_related('items__product').get(pk=object_id)
-        context = {
-            'order': order,
-            'title': f'Order #{order.id} - Print View',
-            'opts': self.model._meta,
-            'original': order,
-        }
-        return TemplateResponse(request, 'admin/order_print.html', context)
+        try:
+            order = models.Order.objects.select_related('customer').prefetch_related('items__product').get(pk=object_id)
+            context = {
+                'order': order,
+                'title': f'Order #{order.id} - Print View',
+                'opts': self.model._meta,
+                'original': order,
+                'has_view_permission': self.has_view_permission(request, order),
+            }
+            return TemplateResponse(request, 'admin/store/order_print.html', context)
+        except models.Order.DoesNotExist:
+            messages.error(request, "الطلب غير موجود")
+            return redirect(reverse('admin:store_order_changelist'))
 
 
     

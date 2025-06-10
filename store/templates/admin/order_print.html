@@ -1,0 +1,54 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main" class="order-print">
+    <h1>تفاصيل الطلب #{{ order.id }}</h1>
+    
+    <div class="customer-info">
+        <h2>معلومات العميل</h2>
+        <p><strong>الاسم:</strong> {{ order.customer.full_name }}</p>
+        <p><strong>الهاتف:</strong> {{ order.customer.phone }}</p>
+        <p><strong>العنوان:</strong> {{ order.customer.address }}</p>
+        <p><strong>علامة مميزة:</strong> {{ order.customer.near_mark }}</p>
+    </div>
+    
+    <div class="order-details">
+        <h2>تفاصيل الطلب</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>السعر</th>
+                    <th>المجموع</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items.all %}
+                <tr>
+                    <td>{{ item.product.title }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.product.price_after_discount }} EGP</td>
+                    <td>{{ item.get_total_price }} EGP</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3"><strong>المجموع الكلي:</strong></td>
+                    <td>{{ order.total_price }} EGP</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    
+    <div class="order-status">
+        <h2>حالة الطلب</h2>
+        <p><strong>الحالة:</strong> {{ order.get_order_status_display }}</p>
+        <p><strong>وقت الطلب:</strong> {{ order.placed_at }}</p>
+    </div>
+</div>
+
+<button onclick="window.print()" class="print-button">طباعة الطلب</button>
+{% endblock %}
