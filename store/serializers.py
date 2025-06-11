@@ -37,11 +37,11 @@ class LightweightProductSerializer(serializers.ModelSerializer):
 
     
 class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
-    products = LightweightProductSerializer(many=True, read_only=True)
+    
 
     class Meta:
         model = StoreCategory
-        fields = ['id', 'name', 'products']
+        fields = ['id', 'name']
 
 
 
