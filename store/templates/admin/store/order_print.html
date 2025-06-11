@@ -11,6 +11,7 @@
         background-color: #fff;
         color: #333;
         padding: 40px;
+        font-size: 16px;
     }
 
     h1 {
@@ -33,7 +34,9 @@
 
     .info-block strong {
         display: inline-block;
-        width: 100px;
+        width: 120px;
+        font-weight: bold;
+        color: #222;
     }
 
     table {
@@ -43,20 +46,27 @@
     }
 
     table th, table td {
-        border: 1px solid #ddd;
-        padding: 10px;
+        border: 1px solid #ccc;
+        padding: 12px;
         text-align: center;
         font-size: 15px;
     }
 
     table th {
         background-color: #f5f5f5;
+        color: #333;
+    }
+
+    td {
+        color: #333 !important;
+        font-weight: 500;
     }
 
     .table-footer {
-        background-color:#6DE1D2 !important;
+        background-color: #007bff !important;
         color: #fff !important;
         font-weight: bold;
+        font-size: 16px;
     }
 
     .print-btn {
@@ -75,11 +85,8 @@
             display: none;
         }
     }
-    td {
-        color: #fff !important;  /* أبيض واضح داخل الصف الأسود */
-    }
-    
 </style>
+
 
 <p class="section-title">تفاصيل الطلب #{{ order.id }}</p>
 
