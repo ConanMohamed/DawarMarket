@@ -140,3 +140,34 @@
 <button class="print-btn" onclick="window.print()">🖨️ طباعة الطلب</button>
 
 
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const rows = document.querySelectorAll("table tbody tr");
+      let grandTotal = 0;
+  
+      rows.forEach(row => {
+        const cells = row.querySelectorAll("td");
+  
+        // تجاهل الصف الأخير اللي فيه الإجمالي
+        if (cells.length < 4) return;
+  
+        const quantityText = cells[1].textContent.trim();
+        const priceText = cells[2].textContent.trim();
+  
+        const quantity = parseFloat(quantityText) || 0;
+        const price = parseFloat(priceText.replace(/[^\d.]/g, '')) || 0;
+  
+        const total = quantity * price;
+        cells[3].textContent = `EGP ${total.toFixed(2)}`;
+  
+        grandTotal += total;
+      });
+  
+      // تحديث الإجمالي الكلي في آخر صف
+      const footerTotalCell = document.querySelector(".table-footer td:last-child");
+      if (footerTotalCell) {
+        footerTotalCell.textContent = `EGP ${grandTotal.toFixed(2)}`;
+      }
+    });
+  </script>
+  

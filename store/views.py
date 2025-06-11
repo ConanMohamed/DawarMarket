@@ -394,11 +394,3 @@ def delete_account_form(request):
     return render(request, 'delete_account_form.html')
 
 
-def order_print(request, pk):
-    order = get_object_or_404(Order.objects.prefetch_related('items__product'), pk=pk)
-
-    items = order.items.all()  # ✅ استدعيهم بشكل واضح
-    for item in items:
-        item.total = item.product.price_after_discount * item.quantity
-
-    return render(request, 'admin/order/print.html', {'order': order, 'items': items})
