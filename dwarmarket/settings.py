@@ -27,6 +27,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # ✅ التطبيقات المثبتة
 INSTALLED_APPS = [
+    'jazzmin', 
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -237,4 +238,14 @@ LOGGING = {
         'handlers': ['console'],
         'level': 'DEBUG',
     },
+}
+
+
+
+JAZZMIN_SETTINGS = {
+    "site_title": "Dawar Market Admin",
+    "site_header": "Dawar Market",
+    "site_brand": "Dawar",
+    "welcome_sign": "مرحبًا بك في لوحة إدارة Dawar Market",
+    "copyright": "Dawar Market ©",
 }
