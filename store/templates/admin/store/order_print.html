@@ -84,7 +84,21 @@
         .print-btn {
             display: none;
         }
+    
+        .sidebar, .main-sidebar, .nav-sidebar, .navbar, .header, .footer {
+            display: none !important;
+        }
+    
+        body {
+            margin: 0;
+            padding: 20px;
+        }
+    
+        .content-wrapper {
+            margin: 0 !important;
+        }
     }
+    
 </style>
 
 
@@ -122,7 +136,6 @@
     </tbody>
 </table>
 
-<div class="section-title">حالة الطلب</div>
 <div class="info-block"><strong>الحالة:</strong> {{ order.order_status }}</div>
 <div class="info-block"><strong>وقت الطلب:</strong> {{ order.placed_at }}</div>
 
