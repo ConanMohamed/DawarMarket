@@ -124,7 +124,7 @@
             <td>{{ item.product.title }}</td>
             <td>{{ item.quantity }}</td>
             <td>{{ item.product.price_after_discount|floatformat:2 }} EGP</td>
-            <td>{{ item.get_total_price }} EGP</td>
+            <td>{{ item.total|floatformat:2 }} EGP</td>
         </tr>
         {% endfor %}
         <tr class="table-footer">

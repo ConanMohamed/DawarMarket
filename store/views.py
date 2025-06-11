@@ -392,3 +392,13 @@ def delete_account_form(request):
             messages.error(request, 'Invalid email or password.')
 
     return render(request, 'delete_account_form.html')
+
+
+def order_print(request, pk):
+    order = get_object_or_404(Order.objects.prefetch_related('items__product'), pk=pk)
+
+    # هنا نحسب المجموع لكل عنصر
+    for item in order.items.all():
+        item.total = item.product.price_after_discount * item.quantity
+
+    return render(request, 'admin/order/print.html', {'order': order})
