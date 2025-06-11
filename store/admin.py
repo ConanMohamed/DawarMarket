@@ -272,4 +272,5 @@ class OrderAdmin(admin.ModelAdmin):
         js = (
             'rest_framework/js/auto-refresh.js',
             'admin/js/order-print-button.js',
+            'admin/js/fix-tabs.js',
         )
