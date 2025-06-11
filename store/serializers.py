@@ -42,6 +42,7 @@ class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoreCategory
         fields = ['id', 'name', 'products']
+        
 
 
 
@@ -93,6 +94,7 @@ class LightweightProductSerializer(serializers.ModelSerializer):
 
 
 
+
 class StoreCategorySerializer(serializers.ModelSerializer):
     products = LightweightProductSerializer(many=True, read_only=True)
 
@@ -127,8 +129,29 @@ class StoreSerializer(serializers.ModelSerializer):
         return None
 
 
+class StoreCategoryBasicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StoreCategory
+        fields = ['id', 'name']
+
+
+class LightweightProductSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'description', 'unit_price', 'price_after_discount', 'image']
+
+    def get_image(self, obj):
+        try:
+            return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
+        except:
+            return None
+
+
+# ✅ تعديل هنا: استخدم النسخة الخفيفة من StoreCategory
 class ProductSerializer(serializers.ModelSerializer):
-    
+    store_category = StoreCategoryBasicSerializer()
     image = serializers.SerializerMethodField()
 
     class Meta:
@@ -138,13 +161,11 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         if obj.image:
             try:
-                url = obj.image.url
                 return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
-
-
             except:
                 return None
         return None
+
 
 
 class CartItemSerializer(serializers.ModelSerializer):
