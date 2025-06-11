@@ -1,9 +1,7 @@
-{% extends "admin/base_site.html" %}
 {% load i18n %}
 
-{% block title %}Order #{{ order.id }}{% endblock %}
+<title>Order #{{ order.id }}</title>
 
-{% block content %}
 <style>
     body {
         font-family: 'Cairo', sans-serif;
@@ -141,4 +139,4 @@
 
 <button class="print-btn" onclick="window.print()">🖨️ طباعة الطلب</button>
 
-{% endblock %}
+
