@@ -71,18 +71,14 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
 
 
+
+
 class SimpleProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = ['id', 'title', 'unit_price', 'price_after_discount', 'available']
-
-
-class LightweightProductSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'unit_price', 'price_after_discount', 'image']
+        fields = ['id', 'title', 'price_after_discount', 'image']
 
     def get_image(self, obj):
         try:
