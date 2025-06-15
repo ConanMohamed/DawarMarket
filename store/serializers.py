@@ -246,7 +246,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price', 'store_name', 'store_image']
+        fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price','notes', 'store_name', 'store_image']
 
     def get_placed_at(self, obj):
         return localtime(obj.placed_at).strftime('%Y-%m-%d %H:%M')
