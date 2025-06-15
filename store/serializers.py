@@ -240,7 +240,7 @@ class OrderSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()
     customer = serializers.CharField()
     total_price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source='total_price', read_only=True
+        max_digits=10, decimal_places=2,read_only=True
     )
     store_name = serializers.SerializerMethodField()
     store_image = serializers.SerializerMethodField()
