@@ -228,27 +228,32 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = ['id', 'product', 'quantity', 'total_item_price']
 
+    
     def get_total_item_price(self, obj):
-        return float(obj.quantity * obj.product.price_after_discount)
+        return float(obj.quantity * obj.unit_price)
+
+   
 
 
 class OrderSerializer(serializers.ModelSerializer):
     placed_at = serializers.SerializerMethodField()
-    items = OrderItemSerializer(many=True, read_only=True)
+    items = serializers.SerializerMethodField()
     customer = serializers.CharField()
-    total_price = serializers.SerializerMethodField()
+    total_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source='total_price', read_only=True
+    )
     store_name = serializers.SerializerMethodField()
     store_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price','notes', 'store_name', 'store_image']
+        fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price', 'notes', 'store_name', 'store_image']
 
     def get_placed_at(self, obj):
         return localtime(obj.placed_at).strftime('%Y-%m-%d %H:%M')
 
-    def get_total_price(self, obj):
-        return sum(item.quantity * item.product.price_after_discount for item in obj.items.all())
+    def get_items(self, obj):
+        return OrderItemSerializer(obj.items.all(), many=True, context=self.context).data
 
     def get_store_name(self, obj):
         first_item = obj.items.first()
@@ -260,6 +265,7 @@ class OrderSerializer(serializers.ModelSerializer):
         if first_item and first_item.product.store.image:
             return request.build_absolute_uri(first_item.product.store.image.url)
         return None
+
 
 
 class CreateOrderSerializer(serializers.Serializer):
