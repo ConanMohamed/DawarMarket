@@ -268,6 +268,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class CreateOrderSerializer(serializers.Serializer):
     cart_id = serializers.UUIDField()
+    notes   = serializers.CharField(required=False, allow_blank=True, max_length=2_000)
 
     def validate_cart_id(self, cart_id):
         if not Cart.objects.filter(pk=cart_id).exists():
@@ -278,19 +279,30 @@ class CreateOrderSerializer(serializers.Serializer):
 
     def save(self, **kwargs):
         with transaction.atomic():
-            cart_id = self.validated_data['cart_id']
+            cart_id  = self.validated_data['cart_id']
+            notes    = self.validated_data.get('notes', '')
             customer = User.objects.get(id=self.context['user_id'])
-            order = Order.objects.create(customer=customer)
+
+            order = Order.objects.create(
+                customer=customer,
+                notes=notes                 # ⬅️ نحفظ الملاحظات هنا
+            )
 
             cart_items = CartItem.objects.filter(cart_id=cart_id).select_related('product')
             order_items = [
-                OrderItem(order=order, product=item.product, quantity=item.quantity, unit_price=item.product.unit_price)
+                OrderItem(
+                    order=order,
+                    product=item.product,
+                    quantity=item.quantity,
+                    unit_price=item.product.unit_price
+                )
                 for item in cart_items
             ]
             OrderItem.objects.bulk_create(order_items)
             order.calculate_total_price(save=True)
             Cart.objects.filter(pk=cart_id).delete()
             return order
+
 
 
 class UpdateOrderSerializer(serializers.ModelSerializer):
