@@ -150,11 +150,12 @@ class Order(models.Model):
 
 
     def calculate_total_price(self, save=True):
-        total = sum(item.quantity * item.product.price_after_discount for item in self.items.all())
+        total = sum(item.quantity * item.unit_price for item in self.items.all())  # ✅ استخدم السعر المجمّد
         if self.total_price != total:
             self.total_price = total
             if save:
                 super().save(update_fields=['total_price'])
+
 
     def __str__(self):
         return f"Order {self.id} - {self.customer.full_name}"
