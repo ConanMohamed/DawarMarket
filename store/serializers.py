@@ -290,14 +290,15 @@ class CreateOrderSerializer(serializers.Serializer):
 
             cart_items = CartItem.objects.filter(cart_id=cart_id).select_related('product')
             order_items = [
-                OrderItem(
-                    order=order,
-                    product=item.product,
-                    quantity=item.quantity,
-                    unit_price=item.product.unit_price
-                )
-                for item in cart_items
-            ]
+            OrderItem(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                unit_price=item.product.price_after_discount  # ← السعر الثابت وقت الطلب
+            )
+            for item in cart_items
+        ]
+
             OrderItem.objects.bulk_create(order_items)
             order.calculate_total_price(save=True)
             Cart.objects.filter(pk=cart_id).delete()

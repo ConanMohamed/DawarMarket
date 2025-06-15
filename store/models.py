@@ -172,12 +172,15 @@ class OrderItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+   
+            
     def save(self, *args, **kwargs):
-        if not self.unit_price:
+        if self._state.adding:
             self.unit_price = self.product.price_after_discount
         super().save(*args, **kwargs)
         if self.order:
             self.order.calculate_total_price()
+
 
     def delete(self, *args, **kwargs):
         order = self.order
