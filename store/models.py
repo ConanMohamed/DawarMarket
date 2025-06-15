@@ -146,6 +146,8 @@ class Order(models.Model):
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    notes = models.TextField(blank=True, null=True)
+
 
     def calculate_total_price(self, save=True):
         total = sum(item.quantity * item.product.price_after_discount for item in self.items.all())
@@ -169,7 +171,6 @@ class OrderItem(models.Model):
     unit_price = models.DecimalField(max_digits=6, decimal_places=2, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    notes = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.unit_price:
