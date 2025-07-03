@@ -1,49 +1,58 @@
-from djoser.serializers import UserSerializer as BaseUserSerializer, UserCreateSerializer as BaseUserCreateSerializer
-from rest_framework import serializers
 from decimal import Decimal
+
+from djoser.serializers import (
+    UserSerializer as BaseUserSerializer,
+    UserCreateSerializer as BaseUserCreateSerializer,
+)
 from django.db import transaction
-from django.db.models import Count
-from rest_framework.reverse import reverse
 from django.utils.timezone import localtime
+from rest_framework import serializers
+from rest_framework.reverse import reverse
 
-from .models import Product, Cart, CartItem, Order, OrderItem, Store, Category, User, StoreCategory
+from .models import (
+    Category,
+    Cart,
+    CartItem,
+    Order,
+    OrderItem,
+    Product,
+    ProductSize,
+    Store,
+    StoreCategory,
+    User,
+)
+
+# -----------------------------------------------------------------------------
+# ✅ Helper Serializers
+# -----------------------------------------------------------------------------
+class ProductSizeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductSize
+        fields = [
+            "id",
+            "size_name",
+            "size_type",
+            "price",
+            "price_after_discount",
+            "is_available",
+        ]
 
 
+# -----------------------------------------------------------------------------
+# ✅ Store‑level Serializers
+# -----------------------------------------------------------------------------
 class StoreListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
-        fields = ['id', 'name', 'image', 'opens_at', 'close_at', 'max_discount', 'category']
-
-
-
-
-    
-class LightweightProductSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Product
-        fields = ['id', 'title', 'unit_price', 'price_after_discount', 'image']
-
-    def get_image(self, obj):
-        if obj.image:
-            try:
-                return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
-
-            except:
-                return None
-        return None
-
-
-    
-class StoreCategoryWithProductsSerializer(serializers.ModelSerializer):
-    
-
-    class Meta:
-        model = StoreCategory
-        fields = ['id', 'name']
-        
-
+        fields = [
+            "id",
+            "name",
+            "image",
+            "opens_at",
+            "close_at",
+            "max_discount",
+            "category",
+        ]
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -55,10 +64,10 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'name', 'total_stores', 'stores', 'image']
 
-    def get_total_stores(self, category: Category):
+    def get_total_stores(self, category):
         return category.stores.count()
 
-    def get_stores(self, category: Category):
+    def get_stores(self, category):
         request = self.context.get('request')
         return [
             {
@@ -71,44 +80,39 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
 
 
-
-
-class SimpleProductSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Product
-        fields = ['id', 'title', 'price_after_discount', 'image']
-
-    def get_image(self, obj):
-        try:
-            return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
-
-
-        except:
-            return None
-
-
-
-
 class StoreCategorySerializer(serializers.ModelSerializer):
-    
-
     class Meta:
         model = StoreCategory
-        fields = ['id', 'name']
+        fields = ["id", "name"]
 
 
 class StoreSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
+    category = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     store_categories = StoreCategorySerializer(many=True, read_only=True)
+    products_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Store
-        fields = ['id', 'name', 'description', 'opens_at', 'close_at', 'max_discount', 'category', 'products_count', 'image', 'store_categories']
+        fields = [
+            "id",
+            "name",
+            "description",
+            "opens_at",
+            "close_at",
+            "max_discount",
+            "category",
+            "products_count",
+            "image",
+            "store_categories",
+        ]
 
-    products_count = serializers.SerializerMethodField()
+    def get_category(self, store: Store):
+        return {
+            "id": store.category.id,
+            "name": store.category.name,
+            "image": store.category.image.url if store.category.image else None,
+        }
 
     def get_products_count(self, store: Store):
         return store.products.count()
@@ -116,91 +120,197 @@ class StoreSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         if obj.image:
             try:
-                url = obj.image.url
-                return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
-
-
-            except:
+                return obj.image.url.replace(
+                    "/upload/", "/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/"
+                )
+            except Exception:
                 return None
         return None
 
 
-class StoreCategoryBasicSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = StoreCategory
-        fields = ['id', 'name']
-
-
+# -----------------------------------------------------------------------------
+# ✅ Product‑level Serializers
+# -----------------------------------------------------------------------------
 class LightweightProductSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
+    sizes = ProductSizeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'unit_price', 'price_after_discount', 'image']
-
-    def get_image(self, obj):
-        try:
-            return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
-        except:
-            return None
-
-
-# ✅ تعديل هنا: استخدم النسخة الخفيفة من StoreCategory
-class ProductSerializer(serializers.ModelSerializer):
-    store_category = StoreCategoryBasicSerializer()
-    image = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Product
-        fields = ['id', 'title', 'description', 'unit_price', 'price_after_discount', 'store', 'store_category', 'image', 'available']
+        fields = ["id", "title", "description", "sizes", "image", "available"]
 
     def get_image(self, obj):
         if obj.image:
             try:
-                return obj.image.url.replace('/upload/', '/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/')
-            except:
+                return obj.image.url.replace(
+                    "/upload/", "/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/"
+                )
+            except Exception:
                 return None
         return None
 
 
+class SimpleProductSerializer(serializers.ModelSerializer):
+    """Returns basic info + min price among sizes"""
 
-class CartItemSerializer(serializers.ModelSerializer):
-    product = SimpleProductSerializer()
-    total_price = serializers.SerializerMethodField()
-
-    def get_total_price(self, cart_item: CartItem):
-        return cart_item.quantity * cart_item.product.price_after_discount
+    image = serializers.SerializerMethodField()
+    min_price = serializers.SerializerMethodField()
 
     class Meta:
-        model = CartItem
-        fields = ['id', 'product', 'quantity', 'total_price']
+        model = Product
+        fields = ["id", "title", "min_price", "image"]
+
+    def get_image(self, obj):
+        if obj.image:
+            try:
+                return obj.image.url.replace(
+                    "/upload/", "/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/"
+                )
+            except Exception:
+                return None
+        return None
+
+    def get_min_price(self, obj):
+        first_size = obj.sizes.filter(is_available=True).order_by("price").first()
+        if first_size:
+            return first_size.price_after_discount or first_size.price
+        return None
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    store_category = StoreCategorySerializer()
+    image = serializers.SerializerMethodField()
+    sizes = ProductSizeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "title",
+            "description",
+            "store",
+            "store_category",
+            "sizes",
+            "image",
+            "available",
+        ]
+
+    def get_image(self, obj):
+        if obj.image:
+            try:
+                return obj.image.url.replace(
+                    "/upload/", "/upload/w_600,h_600,c_fit,q_auto:eco,f_auto/"
+                )
+            except Exception:
+                return None
+        return None
+
+
+# -----------------------------------------------------------------------------
+# ✅ Cart Serializers
+# -----------------------------------------------------------------------------
+class CartItemSerializer(serializers.ModelSerializer):
+    # ⬅️ بيانات المنتج الأساسي
+    product_id   = serializers.IntegerField(source='product_size.product.id', read_only=True)
+    product_name = serializers.CharField(source='product_size.product.title', read_only=True)
+    product_image = serializers.SerializerMethodField()
+
+    # ⬅️ بيانات المقاس
+    size_name = serializers.CharField(source='product_size.size_name', read_only=True)
+    size_type = serializers.CharField(source='product_size.size_type', read_only=True)
+
+    # ⬅️ الأسعار
+    unit_price   = serializers.SerializerMethodField()
+    discount_pct = serializers.SerializerMethodField()
+    total_price  = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = CartItem
+        fields = [
+            'id',
+            'product_id', 'product_name', 'product_image',
+            'size_name', 'size_type',
+            'quantity',
+            'unit_price', 'discount_pct', 'total_price',
+        ]
+
+    # ---------- helpers ----------
+    def get_product_image(self, obj):
+        img = obj.product_size.product.image
+        if img:
+            return img.url.replace('/upload/', '/upload/w_150,h_150,c_fit,q_auto,f_auto/')
+        return None
+
+    def get_unit_price(self, obj):
+        ps = obj.product_size
+        return ps.price_after_discount or ps.price
+
+    def get_discount_pct(self, obj):
+        ps = obj.product_size
+        if ps.price and ps.price_after_discount:
+            pct = 100 * (ps.price - ps.price_after_discount) / ps.price
+            return round(pct)
+        return 0
+
+    def get_total_price(self, obj):
+        return obj.quantity * self.get_unit_price(obj)
+
 
 
 class CartSerializer(serializers.ModelSerializer):
-    id = serializers.UUIDField(read_only=True)
-    items = CartItemSerializer(many=True, read_only=True)
+    id          = serializers.UUIDField(read_only=True)
+    items       = CartItemSerializer(many=True, read_only=True)
+    items_count = serializers.SerializerMethodField()
+    items_total = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
 
-    def get_total_price(self, cart):
-        return sum(item.quantity * item.product.price_after_discount for item in cart.items.all())
-
     class Meta:
-        model = Cart
-        fields = ['id', 'items', 'total_price']
+        model  = Cart
+        fields = [
+            'id',
+            'items',
+            'items_count',
+            'items_total',
+            'total_price',
+        ]
+
+    # ---------- helpers ----------
+    def get_items_count(self, cart):
+        return cart.items.count()
+
+    def get_items_total(self, cart):
+        return sum(item.quantity *
+                   (item.product_size.price_after_discount or item.product_size.price)
+                   for item in cart.items.all())
+
+
+    def get_total_price(self, cart):
+        return self.get_items_total(cart) 
+    
+    
 
 
 class AddCartItemSerializer(serializers.ModelSerializer):
+    """Add product_size to cart"""
+
     id = serializers.IntegerField(read_only=True)
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    product_size = serializers.PrimaryKeyRelatedField(
+        queryset=ProductSize.objects.filter(is_available=True)
+    )
+
+    class Meta:
+        model = CartItem
+        fields = ["id", "product_size", "quantity"]
 
     def save(self, **kwargs):
-        cart_id = self.context['cart_id']
-        product = self.validated_data['product']
-        quantity = self.validated_data['quantity']
+        cart_id = self.context["cart_id"]
+        product_size: ProductSize = self.validated_data["product_size"]
+        quantity = self.validated_data["quantity"]
 
         cart_item, created = CartItem.objects.get_or_create(
-            cart_id=cart_id, product=product,
-            defaults={'quantity': quantity}
+            cart_id=cart_id,
+            product_size=product_size,
+            defaults={"quantity": quantity},
         )
         if not created:
             cart_item.quantity += quantity
@@ -209,61 +319,83 @@ class AddCartItemSerializer(serializers.ModelSerializer):
         self.instance = cart_item
         return cart_item
 
-    class Meta:
-        model = CartItem
-        fields = ['id', 'product', 'quantity']
-
 
 class UpdateCartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
-        fields = ['quantity']
+        fields = ["quantity"]
 
 
+# -----------------------------------------------------------------------------
+# ✅ Order Serializers
+# -----------------------------------------------------------------------------
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = SimpleProductSerializer()
+    product_name  = serializers.CharField(
+        source='product_size.product.title',
+        read_only=True
+    )
+    product_image = serializers.SerializerMethodField()
     total_item_price = serializers.SerializerMethodField()
 
     class Meta:
-        model = OrderItem
-        fields = ['id', 'product', 'quantity', 'total_item_price']
+        model  = OrderItem
+        fields = [
+            'id',
+            'product_size',
+            'product_name',     # ← الجديد
+            'product_image',    # ← اختياري
+            'quantity',
+            'total_item_price',
+        ]
 
-    
+    # صورة مصغّرة (اختياري)
+    def get_product_image(self, obj):
+        img = obj.product_size.product.image
+        if img:
+            return img.url.replace(
+                '/upload/', '/upload/w_150,h_150,c_fit,q_auto,f_auto/'
+            )
+        return None
+
     def get_total_item_price(self, obj):
         return float(obj.quantity * obj.unit_price)
-
-   
 
 
 class OrderSerializer(serializers.ModelSerializer):
     placed_at = serializers.SerializerMethodField()
-    items = serializers.SerializerMethodField()
-    customer = serializers.CharField()
-    total_price = serializers.DecimalField(
-        max_digits=10, decimal_places=2,read_only=True
-    )
+    items = OrderItemSerializer(many=True, read_only=True)
+    customer = serializers.CharField(source="customer.full_name")
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     store_name = serializers.SerializerMethodField()
     store_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['id', 'order_status', 'placed_at', 'customer', 'items', 'total_price', 'notes', 'store_name', 'store_image']
+        fields = [
+            "id",
+            "order_status",
+            "placed_at",
+            "customer",
+            "items",
+            "total_price",
+            "notes",
+            "store_name",
+            "store_image",
+        ]
 
     def get_placed_at(self, obj):
-        return localtime(obj.placed_at).strftime('%Y-%m-%d %H:%M')
+        return localtime(obj.placed_at).strftime("%Y-%m-%d %H:%M")
 
-    def get_items(self, obj):
-        return OrderItemSerializer(obj.items.all(), many=True, context=self.context).data
-
-    def get_store_name(self, obj):
-        first_item = obj.items.first()
-        return first_item.product.store.name if first_item else None
+   
+    def get_store_name(self, order):
+        first_item = order.items.first()
+        return first_item.product_size.product.store.name if first_item else None
 
     def get_store_image(self, obj):
-        request = self.context.get('request')
+        request = self.context.get("request")
         first_item = obj.items.first()
-        if first_item and first_item.product.store.image:
-            return request.build_absolute_uri(first_item.product.store.image.url)
+        if first_item and first_item.product_size.product.store.image:
+            return request.build_absolute_uri(first_item.product_size.product.store.image.url)
         return None
 
 
@@ -285,26 +417,34 @@ class CreateOrderSerializer(serializers.Serializer):
             notes    = self.validated_data.get('notes', '')
             customer = User.objects.get(id=self.context['user_id'])
 
-            order = Order.objects.create(
-                customer=customer,
-                notes=notes                 # ⬅️ نحفظ الملاحظات هنا
+            # ➊ إنشاء الطلب
+            order = Order.objects.create(customer=customer, notes=notes)
+
+            # ➋ جلب عناصر السلة مع الـ product_size
+            cart_items = (
+                CartItem.objects
+                .filter(cart_id=cart_id)
+                .select_related('product_size')
             )
 
-            cart_items = CartItem.objects.filter(cart_id=cart_id).select_related('product')
+            # ➌ بناء عناصر الطلب
             order_items = [
-            OrderItem(
-                order=order,
-                product=item.product,
-                quantity=item.quantity,
-                unit_price=item.product.price_after_discount  # ← السعر الثابت وقت الطلب
-            )
-            for item in cart_items
-        ]
-
+                OrderItem(
+                    order      = order,
+                    product_size = item.product_size,
+                    quantity   = item.quantity,
+                    unit_price = item.product_size.price_after_discount
+                                 or item.product_size.price   # السعر المُجمَّد وقت الطلب
+                )
+                for item in cart_items
+            ]
             OrderItem.objects.bulk_create(order_items)
+
+            # ➍ حساب إجمالي الطلب ثم حذف السلة
             order.calculate_total_price(save=True)
             Cart.objects.filter(pk=cart_id).delete()
             return order
+
 
 
 
